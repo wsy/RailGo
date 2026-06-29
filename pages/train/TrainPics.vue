@@ -20,13 +20,12 @@
 				<view class="ux-bg-white ux-border-radius ux-padding ux-mb-small">
 					<view class="ux-flex ux-align-items-center ux-space-between">
 						<view>
-							<text class="ux-h4 ux-bold">{{coachData.trainStyle}}</text><br/>
-							<text class="ux-text-small ux-color-grey">今日担当 {{coachData.carCode}}</text>
-
+							<text class="ux-h4 ux-bold">{{coachData.trainStyle || '未知车型'}}</text><br/>
+							<text class="ux-text-small ux-color-grey">今日担当 {{coachData.carCode || '暂无车号'}}</text>
 						</view>
 						<view class="ux-text-right">
 							<text class="ux-badge ux-text-small ux-color-white" style="background-color:#114598; padding:5rpx 15rpx;">
-								{{coachData.carType}}
+								{{coachData.carType || '动车组'}}
 							</text>
 						</view>
 					</view>
@@ -34,7 +33,7 @@
 
 				<view class="ux-mt-normal">
 					<view v-for="(item, index) in coachData.coachPicList" :key="index" class="ux-mb-normal">
-						<view class="ux-bg-white ux-border-radius" style="overflow: hidden; line-height: 0;">
+						<view class="ux-bg-white ux-border-radius" style="overflow: hidden; line-height: 0; margin-top: 15rpx; ">
 							<image 
 								:src="getImageUrl(item.pictureUrl)" 
 								mode="widthFix" 
@@ -42,14 +41,14 @@
 								@click="preview(index)"
 							></image>
 						</view>
-						<!-- <view class="ux-text-center ux-pt-small">
-							<text class="ux-text-small ux-opacity-5" style="font-size: 24rpx;">{{item.pictureName}}</text>
-						</view> -->
+						<view class="ux-text-center ux-pt-small">
+							<text class="ux-text-small ux-opacity-5">{{item.pictureName}}</text>
+						</view>
 					</view>
 				</view>
 			</view>
 
-			<view v-if="!loading && !coachData" class="ux-flex ux-justify-content-center ux-pt-large">
+			<view v-if="!loading && (!coachData || !coachData.coachPicList || coachData.coachPicList.length === 0)" class="ux-flex ux-justify-content-center ux-pt-large">
 				<text class="ux-text-small ux-opacity-3">暂无该车次车型图片信息</text>
 			</view>
 
@@ -86,29 +85,26 @@
 			},
 			// 拼接12306图片完整地址
 			getImageUrl(picName) {
-				return `https://exservice.12306.cn/cxmadmin/images/${picName}`;
+				return picName;
 			},
 			async getData() {
 				this.loading = true;
+				this.coachData = null; // 请求前先清空旧数据，避免上一次的结果残留导致视觉闪烁
 				try {
-					const apiUrl = `https://mobile.12306.cn/wxxcx/openplatform-inner/miniprogram/wifiapps/appFrontEnd/v2/lounge/open-smooth-common/trainStyleBatch/getCarDetail`;
-					
+					const apiUrl = `https://rg-api.zenglingkun.cn/api/v2/getCoachPic?train=${this.trainCode}`;
 					// 使用 UniGet 发起请求
-					const res = await uniGet(apiUrl, {
-						params: {
-							carCode: '',
-							trainCode: this.trainCode,
-							runningDay: this.runningDay,
-							reqType: 'form'
-						}
-					});
-					// 根据你提供的返回格式解析
-					if (res.data && res.data.content && res.data.content.data) {
-						this.coachData = res.data.content.data;
+					const res = await uniGet(apiUrl);
+					
+					// 核心修复：严格验证返回的 data 是否有内容
+					if (res && res.data && res.data.data && Object.keys(res.data.data).length > 0) {
+						this.coachData = res.data.data;
 					} else {
-						console.error("数据解析失败", res);
+						// 即使网络请求成功(200)，但 data 项目为空白或 null
+						this.coachData = null;
+						console.warn("未获取到有效的车型图片数据：data 为空");
 					}
 				} catch (e) {
+					this.coachData = null;
 					console.error("请求异常", e);
 				} finally {
 					this.loading = false;
@@ -116,6 +112,7 @@
 			},
 			// 图片预览功能
 			preview(index) {
+				if (!this.coachData || !this.coachData.coachPicList) return;
 				const urls = this.coachData.coachPicList.map(item => this.getImageUrl(item.pictureUrl));
 				uni.previewImage({
 					current: index,

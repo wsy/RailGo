@@ -42,7 +42,7 @@
 								}" 
 								:value="keyword" 
 								:disabled="isCustomKeyboardEnabled" 
-								@input="e => keyword = e.detail.value"/>
+								@input="e => { keyword = e.detail.value; fetchPlaceholder(); }"/>
 						</view>
 						<view v-if="shouldShowPlacehold()"
 							style="position:absolute;z-index:114514;margin-top:-0.78125rem;width:100%;"
@@ -110,7 +110,7 @@
 					@change="vague" :checked="isVague"/>
 				<text class="va">查询同城车站</text>
 			</view>
-						<br v-if="selectIndex==0">
+			<br v-if="selectIndex==0">
 			<button type="primary" style="background-color:#114598;color:#ffffff;" hover-class="ux-tap"
 				@click="jumpToResult()">查询</button>
 			<br>
@@ -120,7 +120,6 @@
 				<text class="ux-bold">信息仅供参考 请以铁路运营企业实际运用为准</text>
 			</view>
 			<br>
-			<!-- 历史记录 -->
 			<view v-if="trainHistory && trainHistory.length > 0" class="ux-mb-small">
 				<view class="ux-flex ux-space-between ux-align-items-center ux-mb-small">
 					<text class="ux-h6 ux-bold">历史记录</text>
@@ -205,6 +204,9 @@
 		toRaw
 	} from "@vue/reactivity";
 	
+	// 防抖定时器定义在外部，防止被 Vue 深度监听劫持造成 UI 渲染阻塞
+	let debounceTimer = null;
+
 	export default {
 		data() {
 			return {
@@ -260,7 +262,6 @@
 				this.stsSelectionB = selectionB.name;
 			}
 			
-			// 加载历史记录
 			this.trainHistory = uni.getStorageSync('trainHistory') || [];
 			
 			this.isCustomKeyboardEnabled = true;
@@ -283,17 +284,22 @@
 					}
 				});
 				this.keyword = updatedParts.join('/');
+				// 核心修复：按键时主动请求，不依赖全局 watch
+				this.fetchPlaceholder();
 			},
 			onNumberClick(number) { 
 				this.keyword = this.keyword + String(number);
+				this.fetchPlaceholder();
 			},
 			onDelete() {
 				if (this.keyword.length > 0) {
 					this.keyword = this.keyword.substring(0, this.keyword.length - 1);
+					this.fetchPlaceholder();
 				}
 			},
 			onLongPressDelete() {
 				this.keyword = "";
+				this.placeholderData = [];
 				if (this.deleteTimer) {
 					clearTimeout(this.deleteTimer);
 					this.deleteTimer = null;
@@ -303,6 +309,7 @@
 				this.deleteTimer = setTimeout(() => {
 					if (this.keyword.length > 0) {
 						this.keyword = "";
+						this.placeholderData = [];
 					}
 					this.deleteTimer = null; 
 				}, this.longPressThreshold);
@@ -324,7 +331,6 @@
 			toggleSystemKeyboard: function() {
 				this.showKeyboard = false;
 				this.isCustomKeyboardEnabled = false;
-				// 此时 input 的 pointer-events 变为 auto，即可正常点击聚焦
 			},
 			back: function() {
 				uni.navigateBack()
@@ -343,7 +349,6 @@
 						uni.navigateTo({url: "/pages/404/newYear"})
 						return
 					}
-					// 保存到历史记录
 					this.saveToHistory(this.keyword);
 					uni.navigateTo({
 						url: "/pages/train/trainResult?keyword=" + this.keyword + "&date=" + this.date
@@ -361,10 +366,11 @@
 			},
 			fetchPlaceholder: function() {
 				const mode = uni.getStorageSync("mode");
-				if (this._debounceTimer) clearTimeout(this._debounceTimer);
+				if (debounceTimer) clearTimeout(debounceTimer);
 				
 				if (this.keyword.length >= 2) {
-					this._debounceTimer = setTimeout(async () => {
+					// 略微调高防抖缓冲（260ms），确保高频点击自定义键盘不拥堵主线程
+					debounceTimer = setTimeout(async () => {
 						try {
 							if (mode == "network") {
 								const resp = await uniGet(`https://data.railgo.zenglingkun.cn/api/train/preselect?keyword=${encodeURIComponent(this.keyword)}`);
@@ -375,23 +381,31 @@
 									toStation: item.toStation || {}
 								}));
 							} else {
-								if (this.keyword[0] >= '0' && this.keyword[0] <= '9') {
-									this.placeholderData = toRaw(await doQuery(
+								let queryResult = [];
+								const kw = this.keyword.trim();
+								if (kw[0] >= '0' && kw[0] <= '9') {
+									queryResult = await doQuery(
 										"SELECT code, numberFull, timetable FROM trains WHERE numberFull LIKE '%\"_" +
-										this.keyword + "%\"%' OR numberFull LIKE '%\"" + this.keyword + "%\"'",
-										["code", "numberFull", "timetable"]));
+										kw + "%\"%' OR numberFull LIKE '%\"" + kw + "%\"'",
+										["code", "numberFull", "timetable"]);
 								} else {
-									this.placeholderData = toRaw(await doQuery(
+									queryResult = await doQuery(
 										"SELECT code, numberFull, timetable FROM trains WHERE numberFull LIKE '%" +
-										this.keyword + "%'", ["code", "numberFull", "timetable"]));
+										kw + "%'", ["code", "numberFull", "timetable"]);
 								}
-								this.placeholderData = this.placeholderData.sort((a, b) => parseInt(a.numberFull.join("/").match(/\d+/)[0]) - parseInt(b.numberFull.join("/").match(/\d+/)[0]));
+								
+								const rawData = toRaw(queryResult) || [];
+								this.placeholderData = rawData.sort((a, b) => {
+									const numA = a.numberFull && a.numberFull.join("/").match(/\d+/);
+									const numB = b.numberFull && b.numberFull.join("/").match(/\d+/);
+									return parseInt(numA ? numA[0] : 0) - parseInt(numB ? numB[0] : 0);
+								});
 							}
 							this.placeholderCollapsed = false;
 						} catch (error) {
 							console.error("预选词加载失败", error);
 						}
-					}, 200);
+					}, 260);
 				} else {
 					this.placeholderData = [];
 				}
@@ -406,7 +420,6 @@
 				this.keyword = ph;
 				this.placeholderCollapsed = true;
 				this.hideTrainKeyboard();
-				// 保存到历史记录
 				this.saveToHistory(ph);
 			},
 			swapSts: function(e) {
@@ -424,35 +437,26 @@
 			vague: function(e) {
 				this.isVague = e.detail.value;
 			},
-			
-			// 保存到历史记录
 			saveToHistory: function(trainNumber) {
 				if (!trainNumber) return;
-				// 先移除已存在的相同记录（避免重复）
 				this.trainHistory = this.trainHistory.filter(item => item.trainNumber !== trainNumber);
 			
-				// 添加新记录到数组开头
 				const newHistoryItem = {
 					trainNumber: trainNumber.toUpperCase(),
-					date: this.today, // 使用当前选择的日期
-					timestamp: Date.now() // 添加时间戳用于排序
+					date: this.today, 
+					timestamp: Date.now() 
 				};
 				this.trainHistory.unshift(newHistoryItem);
-				// 限制历史记录数量为10条
 				if (this.trainHistory.length > 10) {
 					this.trainHistory = this.trainHistory.slice(0, 10);
 				}
 				
-				// 保存到本地存储
 				uni.setStorageSync('trainHistory', this.trainHistory);
 			},
-			
-			// 从历史记录中选择车次
 			selectFromHistory: function(trainNumber) {
 				this.keyword = trainNumber;
+				this.fetchPlaceholder();
 			},
-			
-			// 清除历史记录
 			clearHistory: function() {
 				uni.showModal({
 					title: '确认清除',
@@ -465,17 +469,9 @@
 					}
 				});
 			}
-		},
-		watch: {
-			keyword: {
-				handler() {
-					this.fetchPlaceholder();
-				}
-			}
 		}
 	}
 </script>
-
 
 <style scoped>
 .train-keyboard {

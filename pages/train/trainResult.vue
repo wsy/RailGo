@@ -180,12 +180,12 @@
 				<view class="ux-bg-white ux-border-radius"
 					v-if="(carData.carOwner || '')+(carData.runner || '')+(carData.car || '')!=''">
 
-					<view v-if="carData.car, ['G','D','C','S'].includes(carData.numberKind)">
+					<view v-if="carData.car && ['G','D','C','S'].includes(carData.numberKind) && carImageUrl">
 						<view class="ux-flex ux-justify-content-center">
-							<image v-if="carImageUrl" :src="carImageUrl" @error="onImageError" mode="widthFix"
+							<image :src="carImageUrl" @error="onImageError" mode="widthFix"
 								style="width:100%; height: auto; border-top-left-radius: 10rpx; border-top-right-radius: 10rpx; border-bottom-left-radius: 0; border-bottom-right-radius: 0;"></image>
 						</view>
-						<view v-if="carImageUrl" class="ux-flex ux-space-between ux-pt-small ux-pb-small ux-pl ux-pr ux-color-white"
+						<view class="ux-flex ux-space-between ux-pt-small ux-pb-small ux-pl ux-pr ux-color-white"
 							:style="'background-color:'+cardColor" style="border-bottom-left-radius: 10rpx; border-bottom-right-radius: 10rpx;">
 							<text class="ux-text-small ux-bold">
 								{{carData.car || ''}}
@@ -495,7 +495,7 @@
 			this.fillInData(mode);
 		},
 		onShow() {
-			// #ifdef APP
+			// #ifdef APP-PLUS
 			plus.navigator.setStatusBarBackground('#114598');
 			// #endif
 		},
@@ -752,21 +752,8 @@
 			 * 图片加载失败时的处理函数，实现 Fallback 逻辑
 			 */
 			onImageError: function(e) {
-			    const carModel = this.carData.car ? this.carData.car.replace(' 重联', '') : null;
-			    
-			    // 如果当前加载的是 JSON 里的图片且失败了，尝试切换到默认 PNG 接口
-			    if (this.carImageUrl !== this.defaultImageUrl && this.defaultImageUrl) {
-			        this.carImageUrl = this.defaultImageUrl;
-			        return;
-			    }
-			
-			    // 如果默认 PNG 也失败了，尝试使用本地 config.js 里的兜底图
-			    if (carModel && this.carMap[carModel] && this.carMap[carModel][4]) {
-			        this.carImageUrl = this.carMap[carModel][4];
-			    } else {
-			        this.carImageUrl = '';
-			    }
-			    console.error("All image sources failed.");
+			    this.carImageUrl = '';
+			    console.error("Image load failed, hiding image container.");
 			},
 
 			/**
@@ -775,37 +762,23 @@
 			async fetchImageSource() {
 			    const carModel = this.carData.car ? this.carData.car.replace(' 重联', '') : null;
 			    if (!carModel) {
+			        this.carImageUrl = ''; // 没有车型直接清空
 			        this.isImageLoading = false;
 			        return;
 			    }
-			
-			    // 设置默认的备用地址（原有的 .png 接口）
-			    this.defaultImageUrl = `https://tp.railgo.zenglingkun.cn/api/${encodeURIComponent(carModel)}.png`;
 			
 			    try {
 			        const url = `https://tp.railgo.zenglingkun.cn/api/${encodeURIComponent(carModel)}.json`;
 			        const resp = await uniGet(url);
 			
-			        if (resp.data && resp.data.success && resp.data.data) {
-			            // 优先使用 JSON 中的 image_url
-			            if (resp.data.data.image_url) {
-			                this.carImageUrl = resp.data.data.image_url;
-			            } else {
-			                // 如果 JSON 成功但没返回 image_url，走默认 PNG
-			                this.carImageUrl = this.defaultImageUrl;
-			            }
-			            // 更新上传者信息
+			        if (resp.data && resp.data.success && resp.data.data && resp.data.data.image_url) {
+			            this.carImageUrl = resp.data.data.image_url;
 			            this.imageUploaderUsername = resp.data.data.uploader_username || '匿名';
 			        } else {
-			            // JSON 接口返回 success: false
-			            this.carImageUrl = this.defaultImageUrl;
-			            this.imageUploaderUsername = '暂缺图片';
+			            this.carImageUrl = '';
 			        }
 			    } catch (e) {
-			        // 网络请求失败（如 404），走默认 PNG
-			        console.warn("JSON metadata not found, using default png.");
-			        this.carImageUrl = this.defaultImageUrl;
-			        this.imageUploaderUsername = '暂缺图片';
+			        this.carImageUrl = '';
 			    } finally {
 			        this.isImageLoading = false;
 			    }
@@ -993,11 +966,11 @@
 					// -------------------------------------------------------------------------
 					// **图片 URL 初始化逻辑**
 					const carModel = this.carData.car ? this.carData.car.replace(' 重联', '') : null;
-					if (carModel) {
-						this.carImageUrl = `https://tp.railgo.zenglingkun.cn/api/${encodeURIComponent(carModel)}.png`;
-					} else {
-						this.carImageUrl = '';
-					}
+					// if (carModel) {
+					// 	this.carImageUrl = `https://tp.railgo.zenglingkun.cn/api/${encodeURIComponent(carModel)}.png`;
+					// } else {
+					// 	this.carImageUrl = '';
+					// }
                     
                     // NEW: Fetch image source metadata
                     if (this.carData.car) {

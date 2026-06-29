@@ -243,6 +243,12 @@
 			{
 				"navigationBarTitleText" : ""
 			}
+		},
+		{
+			"path": "pages/emu/info",
+			"style": {
+				"navigationBarTitleText": ""
+			}
 		}
 	],
 	"globalStyle": {

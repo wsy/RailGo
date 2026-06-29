@@ -1,6 +1,6 @@
 <template>
 	<view class="ux-bg-grey5 root-container">
-		<view class="ux-bg-primary" style="height: var(--status-bar-height);">11</view>
+		<view class="ux-bg-primary" style="height: var(--status-bar-height);"></view>
 
 		<view class="ux-padding">
 			<view hover-class="ux-bg-grey8" @click="back" style="display: inline-block; padding: 10rpx;">
@@ -109,7 +109,8 @@
 				],
 				specialThanks: [
 					{ name: 'XieXiLin', avatar: 'https://q1.qlogo.cn/g?b=qq&s=100&nk=3068342155' },
-					{ name: 'bcdt', avatar: 'https://q1.qlogo.cn/g?b=qq&s=100&nk=2396807944' }
+					{ name: 'bcdt', avatar: 'https://q1.qlogo.cn/g?b=qq&s=100&nk=2396807944' },
+					{ name: 'lihugang', avatar: 'https://q1.qlogo.cn/g?b=qq&s=100&nk=3186095880' }
 				],
 				picgive: ["1972867189", "2151235831", "1069943593", "525637945", "3596323062", "2377807972", "982588465",
 					"1779378782", "516127399", "2533221373", "2387845184", "365736548", "1983163227", "3111737636"
@@ -117,8 +118,8 @@
 				zz: [],
 				dataSources: [
 					{ source: 'RailGo.Parser', website: 'railgo.dev', function: '车次、车站、正晚点、动车组担当' },
-					{ source: 'MoeFactory车厢', website: 'rail.moefactory.com', function: '配属' },
-					{ source: '车站小屏', website: '12036.com', function: '车站大屏' }
+					{ source: '车站小屏', website: '12036.com', function: '车站大屏' },
+					{ source: 'OpenCRHTracker', website: 'crh.lihugang.top', function: '担当、配属' }
 				]
 			};
 		},

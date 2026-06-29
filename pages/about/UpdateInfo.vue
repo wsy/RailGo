@@ -51,6 +51,15 @@
 				nowIcon: uni.getStorageSync("nowIcon") || 'crh',
 				updateLogs: [
 					{
+						version: "v1.8.1 (10801)",
+						date: "2026-06-20",
+						items: [
+							"Feature: 更好的动车组查询功能",
+							"Fixed: 座位图显示",
+							"Fixed: 车次键盘卡顿"
+						]
+					},
+					{
 						version: "v1.8.0 (10800)",
 						date: "2026-03-22",
 						items: [
