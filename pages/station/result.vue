@@ -124,6 +124,25 @@
 				style="background-color:#e9eef5;border:1px solid #114598;border-radius:10rpx;color:#114598; margin-top: 20rpx">
 				<text class="ux-bold">信息仅供参考 请以车站现场公告为准</text>
 			</view>
+			
+			<!-- 大屏类型选择按钮 -->
+			<view v-if="topTabList[selectIndex] && topTabList[selectIndex].name === '大屏'" class="ux-flex ux-space-between ux-mt-small">
+				<button 
+					class="ux-flex1 ux-mr-small" 
+					size="mini"
+					:type="bigScreenKind === 'departure' ? 'primary' : 'default'"
+					@click="switchBigScreenKind('departure')">
+					出发
+				</button>
+				<button 
+					class="ux-flex1 ux-ml-small" 
+					size="mini"
+					:type="bigScreenKind === 'arrival' ? 'primary' : 'default'"
+					@click="switchBigScreenKind('arrival')">
+					到达
+				</button>
+			</view>
+			
 			<view class="ux-pt dark-table-wrapper" v-if="topTabList[selectIndex] && topTabList[selectIndex].name === '大屏'" style="margin-top: 20rpx;">
 				<uni-table :loading="bigScreenLoading" emptyText="暂无数据" class="dark-table">
 					<uni-tr>
@@ -131,32 +150,34 @@
 						<uni-th align="center">状态</uni-th>
 						<uni-th align="center">始发站</uni-th>
 						<uni-th align="center">终到站</uni-th>
-						<uni-th align="center">开点</uni-th>
-						<uni-th align="center">候车/检票</uni-th>
-						<uni-th align="center">停台</uni-th> </uni-tr>
+						<uni-th align="center">时间</uni-th>
+						<uni-th align="center">{{ bigScreenKind === 'arrival' ? '出站口' : '检票口' }}</uni-th>
+					</uni-tr>
 					<uni-tr v-for="(item, index) in displayedBigScreenData" :key="item.key"> 
-						<uni-td align="center">{{ item.data[0] }}</uni-td>
+						<uni-td align="center">{{ item.trainNum }}</uni-td>
 						<uni-td align="center">
-							<text :style="{color: getStatusColor(item.data[5])}">{{ item.data[5] }}</text>
+							<text :style="{color: getStatusColor(item.bigScreenStatusCode)}">
+								{{ formatBigScreenStatus(item.bigScreenStatus, item.bigScreenStatusCode, item.timeDelay) }}
+							</text>
 						</uni-td>
-						<uni-td align="center">{{ item.data[1] }}</uni-td>
-						<uni-td align="center">{{ item.data[2] }}</uni-td>
-						<uni-td align="center">{{ formatDepartureTime(item.data[3]) }}</uni-td>
-						<uni-td align="center">{{ item.data[4] }}</uni-td>
+						<uni-td align="center">{{ item.trainStartStation }}</uni-td>
+						<uni-td align="center">{{ item.trainEndStation }}</uni-td>
+						<uni-td align="center">{{ formatDepartureTime(item.time) }}</uni-td>
 						<uni-td align="center">
-							<view v-if="item.isLoading" class="ux-text-small" style="opacity: 0.6;">查询中...</view>
-							<view v-else-if="item.platform && item.platform !== '未知'">{{ item.platform }}</view>
-							<view v-else>{{ item.wicket && item.wicket !== '未知' ? item.wicket : '-' }}</view>
+							<view v-if="item.bigScreenPort && item.bigScreenPort.length > 0">
+								{{ item.bigScreenPort.join(', ') }}
+							</view>
+							<view v-else>-</view>
 						</uni-td>
-						</uni-tr>
+					</uni-tr>
 				</uni-table>
 				
 				<view v-if="bigScreenData.length > 0 && currentDisplayIndex < bigScreenData.length && !bigScreenLoading" class="ux-padding-small ux-text-center">
-					<text style="color: white; opacity: 0.8;">滚动加载更多...</text>
+					<text style="color: white; opacity: 0.8;">下拉加载更多...（已加载 {{currentDisplayIndex}}/{{bigScreenData.length}}）</text>
 				</view>
 				
 				<view v-if="bigScreenData.length > 0 && currentDisplayIndex >= bigScreenData.length && !bigScreenLoading" class="ux-padding-small ux-text-center">
-					<text style="color: white; opacity: 0.8;">已加载全部 {{bigScreenData.length}} 条</text>
+					<text style="color: white; opacity: 0.8;">已全部加载 {{bigScreenData.length}} 条</text>
 				</view>
 				
 				<view v-if="bigScreenData.length==0 && !bigScreenLoading" class="ux-padding ux-text-center">
@@ -374,19 +395,23 @@
 				filterSourceState: ["P", "D", "A"],
 				sortState: "departure",
 				// --- 新增大屏数据和加载状态 ---
-				bigScreenData: [],
+				bigScreenData: [],           // V2 API 返回的全部数据
 				bigScreenLoading: false,
+				bigScreenKind: 'departure',  // 大屏类型：departure（出发）或 arrival（到达）
 				
 				// --- 滚动加载控制 ---
 				displayedBigScreenData: [], // 实际渲染到大屏表格的数据
 				currentDisplayIndex: 0,     // 当前已加载到 displayedBigScreenData 的索引
-				pageSize: 15,               // 每次加载的条数
+				pageSize: 30,               // 每次加载的条数（改为30）
 				
-				// --- 停台信息缓存与查询状态 ---
-				// 存储已查询到的停台信息，键为 trainNumber_fullTime
+				// --- 停台信息缓存与查询状态（保留） ---
 				platformWicketMap: new Map(), 
-				platformWicketLoadingSet: new Set(), // 存储正在查询的 trainNumber_fullTime 键
-				// -------------------------------
+				platformWicketLoadingSet: new Set(),
+				
+				// --- 自动刷新机制 ---
+				refreshTimer: null,          // 自动刷新定时器
+				refreshInterval: 180000,     // 3分钟（毫秒）
+				
 				trafficData: null, // 交通数据
 				selectedTrafficTab: 0, // 当前选中的交通选项卡
 				trafficDataLoaded: false, // 标记交通数据是否已加载
@@ -407,11 +432,23 @@
 		 * 监听页面滚动到底部，实现大屏数据加载
 		 */
 		onReachBottom() {
-			// 确保当前选中的是“大屏”Tab
+			// 确保当前选中的是"大屏"Tab
 			const isBigScreenTab = this.topTabList[this.selectIndex] && this.topTabList[this.selectIndex].name === '大屏';
 			if (isBigScreenTab) {
 				this.loadMoreBigScreenData();
 			}
+		},
+		/**
+		 * 页面隐藏时停止自动刷新
+		 */
+		onHide() {
+			this.stopAutoRefresh();
+		},
+		/**
+		 * 页面卸载时停止自动刷新
+		 */
+		onUnload() {
+			this.stopAutoRefresh();
 		},
 		methods: {
 			back: function() {
@@ -555,36 +592,52 @@
 					}
 				}
 			},
-			// --- 获取大屏数据的方法 ---
+			// --- 获取大屏数据的方法（V2 API） ---
 			getBigScreenData: async function() {
-
-				if (!this.data.name) return; // 车站名不存在则不查询
+				
+				if (!this.data.telecode) {
+					return; // 车站电报码不存在则不查询
+				}
+				
 				this.bigScreenLoading = true;
+				
+				// 清空当前显示的数据
+				this.displayedBigScreenData = [];
+				this.currentDisplayIndex = 0;
+				this.bigScreenData = []; // 先清空全部数据
+				
 				try {
-					// 移除 '站' 字并进行 URI 编码
-					const stationName = this.data.name.replace(/站$/, ''); 
-					const encodedName = encodeURIComponent(stationName);
-					const url = `https://screen.data.railgo.zenglingkun.cn/station/${encodedName}`;
+					// 使用 V2 API
+					const url = `https://rg-api.zenglingkun.cn/api/v2/getStationBigScreen?stationTelecode=${encodeURIComponent(this.keyword)}&kind=${encodeURIComponent(this.bigScreenKind)}`;
+					
 					const resp = await uniGet(url);
 					
 					// 检查响应数据结构
-					if (resp.data && Array.isArray(resp.data.data)) {
+					if (resp.data && resp.data.success === true && Array.isArray(resp.data.data)) {
+						// 到达大屏和出发大屏都显示全部数据
 						this.bigScreenData = resp.data.data;
+						
+						// 启动自动刷新定时器
+						this.startAutoRefresh();
+						
+						// 先设置为 false，才能调用 loadMoreBigScreenData
+						this.bigScreenLoading = false;
+						
+						// 初始加载第一页数据
+						this.loadMoreBigScreenData();
 					} else {
 						this.bigScreenData = [];
+						this.bigScreenLoading = false;
 					}
 				} catch (error) {
-					console.error("大屏数据加载失败", error);
-					// 不弹出 toast，静默失败，因为主数据已加载
 					this.bigScreenData = [];
-				} finally {
 					this.bigScreenLoading = false;
 				}
 			},
 			
-			// --- NEW: 滚动加载更多大屏数据 (分段加载) ---
+			// --- NEW: 滚动加载更多大屏数据（适配 V2 数据结构） ---
 			/**
-			 * 滚动加载更多大屏数据，并触发停台信息查询（分段加载）
+			 * 滚动加载更多大屏数据（分段加载）
 			 */
 			loadMoreBigScreenData: function() {
 				if (this.bigScreenLoading || this.currentDisplayIndex >= this.bigScreenData.length) {
@@ -600,124 +653,125 @@
 				if (dataToLoad.length === 0) return; // 没有新数据可加载
 
 				dataToLoad.forEach(item => {
-					// 原始数据结构：[trainNumber, fromStation, toStation, fullTime, platformWicket, status]
-					const [trainNumber, , , fullTime] = item;
-					
-					// 转化为渲染数据结构，并添加停台/检票口查询状态
+					// V2 API 数据结构
 					const displayItem = {
-						trainNumber,
-						fullTime,
-						data: item, // 原始数据
-						platform: '查询中...',
-						wicket: '查询中...',
-						isLoading: true,
-						key: `${trainNumber}_${fullTime}` // 唯一键，用于查询状态控制和缓存
+						trainNum: item.trainNum,             // 车次号
+						trainStartStation: item.trainStartStation, // 始发站
+						trainEndStation: item.trainEndStation,     // 终到站
+						time: item.time,                     // 图定时间
+						bigScreenPort: item.bigScreenPort || [],   // 检票口数组
+						bigScreenStatus: item.bigScreenStatus,     // 状态文本
+						bigScreenStatusCode: item.bigScreenStatusCode, // 状态代码
+						timeDelay: item.timeDelay || 0,      // 延误/早点分钟
+						key: `${item.trainNum}_${item.time}`,  // 唯一键
 					};
 					this.displayedBigScreenData.push(displayItem);
-					
-					// 异步触发停台信息查询
-					this.loadPlatformForBigScreenItem(displayItem);
 				});
 
 				this.currentDisplayIndex = nextIndex;
 			},
 			
-			// --- NEW: 为单个大屏车次查询停台信息 ---
+			// --- 自动刷新机制 ---
 			/**
-			 * 为单个大屏车次查询停台信息
-			 * @param {object} displayItem - loadMoreBigScreenData 中生成的展示数据项
+			 * 启动自动刷新定时器
 			 */
-			loadPlatformForBigScreenItem: async function(displayItem) {
-				const key = displayItem.key;
-				
-				// 1. 检查缓存
-				if (this.platformWicketMap.has(key)) {
-					const cached = this.platformWicketMap.get(key);
-					// 使用 $set 确保响应式更新
-					this.$set(displayItem, 'platform', cached.platform);
-					this.$set(displayItem, 'wicket', cached.wicket);
-					this.$set(displayItem, 'isLoading', false);
-					return;
+			startAutoRefresh: function() {
+				// 清除旧的定时器
+				if (this.refreshTimer) {
+					clearInterval(this.refreshTimer);
 				}
 				
-				// 2. 检查是否正在查询
-				if (this.platformWicketLoadingSet.has(key)) {
-					return;
-				}
-				this.platformWicketLoadingSet.add(key);
-				
-				// 3. 提取查询参数
-				// 大屏数据结构：[trainNumber, fromStation, toStation, fullTime, platformWicket, status]
-				const [trainNumber, fromStation, , fullTime] = displayItem.data;
-				
-				// 获取车站电报码（Telecode）和日期
-				const stationTelecode = this.keyword; 
-				const trainDate = fullTime.split(' ')[0].replace(/-/g, ''); // 'YYYY-MM-DD HH:mm:ss' -> 'YYYYMMDD'
-				const trainCode = trainNumber.split('/')[0]; // 例如 G12/G14 -> G12
-				
-				// 确定 type 参数：若当前站是始发站，使用 'D'，否则使用 'A'
-				const currentStationName = this.data.name; // 车站名 (不含 '站')
-				// 注意：这里用 fromStation (data[1]) 和当前站名比较，作为始发站/过路站的粗略判断
-				const requestType = (fromStation.replace(/站$/, '') === currentStationName) ? 'D' : 'A';
-				
-				let platformResult = { platform: '查询失败', wicket: '查询失败' };
-
-				try {
-					// 接口地址与 trainResult.vue 相同，使用 uniPost
-					const response = await uniPost(
-						'https://mobile.12306.cn/wxxcx/wechat/bigScreen/getExit',
-						{ 
-							stationCode: stationTelecode,
-							trainDate: trainDate, 
-							type: requestType, 
-							stationTrainCode: trainCode 
-						}
-					);
-					
-					if (response.data && response.data.status === true && response.data.data) {
-						platformResult.platform = response.data.data.platform || '未知';
-						platformResult.wicket = response.data.data.wicket || '未知';
-					}
-				} catch (error) {
-					console.error("查询停台数据出错:", error);
-					platformResult.platform = '网络错误';
-					platformResult.wicket = '网络错误';
-				} finally {
-					// 更新展示数据和缓存
-					const index = this.displayedBigScreenData.findIndex(item => item.key === key);
-					if (index !== -1) {
-						// 使用 $set 确保 Vue 响应式更新
-						this.$set(this.displayedBigScreenData[index], 'platform', platformResult.platform);
-						this.$set(this.displayedBigScreenData[index], 'wicket', platformResult.wicket);
-						this.$set(this.displayedBigScreenData[index], 'isLoading', false);
-					}
-					
-					// 存入缓存
-					this.platformWicketMap.set(key, platformResult);
-					this.platformWicketLoadingSet.delete(key);
+				// 设置新的定时器
+				this.refreshTimer = setInterval(() => {
+					this.getBigScreenData();
+				}, this.refreshInterval);
+			},
+			
+			/**
+			 * 停止自动刷新定时器
+			 */
+			stopAutoRefresh: function() {
+				if (this.refreshTimer) {
+					clearInterval(this.refreshTimer);
+					this.refreshTimer = null;
 				}
 			},
+			
+			// --- 大屏类型切换 ---
+			/**
+			 * 切换大屏类型（出发/到达）
+			 * @param {string} kind - departure 或 arrival
+			 */
+			switchBigScreenKind: async function(kind) {
+				if (this.bigScreenKind === kind) return;
+				
+				this.bigScreenKind = kind;
+				// 不要在这里清空数据，让 getBigScreenData 函数处理
+				await this.getBigScreenData();
+			},
+			
 			// -------------------------------
 			
 			// --- 时间格式化方法 ---
-			formatDepartureTime(fullTime) {
-				if (!fullTime) return '--:--';
-				// 提取时间部分 (HH:mm)
-				const parts = fullTime.split(' ');
-				return parts.length > 1 ? parts[1].substring(0, 5) : '--:--';
+			formatDepartureTime(time) {
+				if (!time) return '--:--';
+				// V2 API 已经返回格式化的时间 HH:mm
+				return time;
 			},
 			
-			// --- 状态颜色逻辑 ---
-			getStatusColor(status) {
-				if (!status) return 'white'; // 默认白色
-				if (status.includes('正在检票')) {
-					return '#27ae60'; // 绿色
-				} else if (status.includes('停止检票') || status.includes('晚点')) {
-					return '#e74c3c'; // 红色
-				} else if (status.includes('早点')) {
-					return '#27ae60'; // 绿色
+			// --- 状态颜色逻辑（适配 V2 API） ---
+			getStatusColor(statusCode) {
+				if (!statusCode) return 'white'; // 默认白色
+				
+				switch (statusCode) {
+					case 'WAITING':      // 候车
+						return 'white';
+					case 'CANCELED':     // 取消
+						return '#e74c3c'; // 红色
+					case 'CHECK_BEGIN':  // 出发开检
+						return '#27ae60'; // 绿色
+					case 'CHECK_STOP':   // 出发停检
+						return '#e74c3c'; // 红色
+					case 'ON_TIME':      // 到达正点
+						return 'white'; // 白色（在深色背景上更清晰）
+					case 'DELAY':        // 到达晚点
+						return '#e74c3c'; // 红色
+					case 'EARLY':        // 到达早点
+						return '#27ae60'; // 绿色
+					default:
+						return 'white';
 				}
-				return 'white'; // 默认白色
+			},
+			
+			// --- 格式化大屏状态文本（结合延迟信息） ---
+			formatBigScreenStatus(status, statusCode, timeDelay) {
+				if (!status) return '-';
+				
+				const delay = Number(timeDelay);
+				const hasDelay = delay > 0;
+				
+				// 到达大屏
+				if (this.bigScreenKind === 'arrival') {
+					if (statusCode === 'ON_TIME') {
+						return '正点';
+					}
+					if (statusCode === 'DELAY' && hasDelay) {
+						return `晚点${delay}分`;
+					}
+					if (statusCode === 'EARLY' && hasDelay) {
+						return `早点${delay}分`;
+					}
+					return status;
+				}
+				
+				// 出发大屏
+				if (statusCode === 'DELAY' && hasDelay) {
+					return `晚点${delay}分`;
+				}
+				if (statusCode === 'EARLY' && hasDelay) {
+					return `早点${delay}分`;
+				}
+				return status;
 			},
 			// -------------------------------
 			// --- 获取交通数据的方法 ---
@@ -753,9 +807,6 @@
 						}
 					} else {
 						console.error("API响应结构与预期不符");
-						if(response && response.data) {
-							console.log("响应data字段的键:", Object.keys(response.data));
-						}
 						this.trafficData = false;
 					}
 					this.trafficDataLoaded = true;

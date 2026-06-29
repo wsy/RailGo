@@ -117,7 +117,9 @@
 
 			<view class="ux-text-center ux-padding-small ux-mb ux-h6"
 				style="background-color:#e9eef5;border:1px solid #114598;border-radius:10rpx;color:#114598;">
-				<text class="ux-bold">信息仅供参考 请以铁路运营企业实际运用为准</text>
+				<text class="ux-bold">信息仅供参考 请以铁路运营企业实际运用为准</text><br>
+				<text class="ux-bold">V2版本日期极其敏感，请注意选择正确开行日期</text>
+			
 			</view>
 			<br>
 			<view v-if="trainHistory && trainHistory.length > 0" class="ux-mb-small">

@@ -92,83 +92,92 @@
 						</uni-tr>
 				</uni-table>
 
-				<uni-section title="正晚点" type="line" style="background-color: transparent;"
-					title-font-size="28rpx"></uni-section>
+				<!-- 只有今天的日期才显示正晚点和停台信息 -->
+				<view v-if="isTodayDate">
+					<uni-section title="正晚点" type="line" style="background-color: transparent;"
+						title-font-size="28rpx"></uni-section>
 
-				<view v-if="showLoadAllButton" class="ux-pb-small">
-					<button @click="loadAllPlatforms" type="primary" size="mini"
-						style="margin: 0; padding: 0 15px; font-size: 14px; line-height: 30px;">
-						一键全部加载停台信息 (共{{carData.timetable.length}}站)
-					</button>
-				</view>
+					<view v-if="showLoadAllButton" class="ux-pb-small">
+						<button @click="loadAllPlatforms" type="primary" size="mini"
+							style="margin: 0; padding: 0 15px; font-size: 14px; line-height: 30px;">
+							一键全部加载停台信息 (共{{carData.timetable.length}}站)
+						</button>
+					</view>
 
-				<view v-for="(item,index) in combinedDelayData" :key="index" class="ux-bg-white ux-border-radius ux-mt-small">
-					<view class="ux-flex">
-						<view style="border-bottom-left-radius: 10rpx; border-top-left-radius:10rpx; width: 12rpx;"
-							:style="getDelayStatusBackground(item.delayStatusCode)">
+					<view v-for="(item,index) in combinedDelayData" :key="index" 
+						class="ux-bg-white ux-border-radius ux-mt-small" 
+						@click="item.platform ? showPlatformDetails(item, index) : null"
+						hover-class="ux-tap">
+						<view class="ux-flex">
+							<view style="border-bottom-left-radius: 10rpx; border-top-left-radius:10rpx; width: 12rpx;"
+								:style="getDelayStatusBackground(item.delayStatusCode)">
+							</view>
+							<view class="ux-flex ux-space-between ux-pt ux-pl ux-pr ux-align-items-center" style="width: 100%;">
+								<text class="ux-bold" style="font-size: 32rpx;">{{item.stationName || ''}}</text>
+								<text :style="getDelayStatusColor(item.delayStatusCode, item.delayTime)" class="ux-bold" style="font-size: 28rpx;">
+									{{formatDelayStatus(item.delayStatusCode, item.delayTime)}}
+								</text>
+							</view>
 						</view>
-						<view class="ux-flex ux-space-between ux-pt ux-pl ux-pr ux-align-items-center" style="width: 100%;">
-							<text class="ux-bold" style="font-size: 32rpx;">{{item.stationName || ''}}</text>
-							<text :style="getDelayStatusColor(item.delayStatusCode, item.delayTime)" class="ux-bold" style="font-size: 28rpx;">
-								{{formatDelayStatus(item.delayStatusCode, item.delayTime)}}
-							</text>
-						</view>
-					</view>
-					<view class="ux-pl ux-pr ux-pb">
-						<view class="ux-flex ux-space-between ux-mt-small">
-							<text class="ux-text-small ux-opacity-7">预计时间</text>
-							<text class="ux-text-small">{{item.arrivalTime || '-'}}/{{item.departureTime || '-'}}</text>
-						</view>
-						<view class="ux-flex ux-space-between ux-mt">
-							<text class="ux-text-small ux-opacity-7">实际时间</text>
-							<text class="ux-text-small">{{calculateActualTime(item.arrivalTime, item.delayStatusCode, item.delayTime)}}/{{calculateActualTime(item.departureTime, item.delayStatusCode, item.delayTime)}}</text>
-						</view>
-						<view class="ux-flex ux-space-between ux-mt">
-							<text class="ux-text-small ux-opacity-7">停台/检票口</text>
-							<text class="ux-text-small">
-								<text v-if="item.platform">{{item.platform}}</text>
-								<button v-else-if="item.platform === null && showLoadAllButton" 
-									@click="loadPlatformByStationName(item.stationName)" 
-									size="mini" type="primary" 
-									style="margin: 0; padding: 0 5px; font-size: 10px; line-height: 20px; display: inline;">
-									查询
-								</button>
-								<text v-else>-</text>
-								<text v-if="item.wicket">/{{item.wicket}}</text>
-							</text>
-						</view>
-					</view>
-				</view>
-				<view v-if="delay.length === 0" v-for="(item,index) in (carData.timetable || [])" :key="index" class="ux-bg-white ux-border-radius ux-mt-small">
-					<view class="ux-flex">
-						<view style="border-bottom-left-radius: 10rpx; border-top-left-radius:10rpx; width: 12rpx;"
-							:style="'background-color: #606266;'">
-						</view>
-						<view class="ux-flex ux-space-between ux-pt ux-pl ux-pr ux-align-items-center" style="width: 100%;">
-							<text class="ux-bold" style="font-size: 32rpx;">{{item.station || ''}}</text>
-							<text :style="'color: #606266; font-weight: bold;'" class="ux-bold" style="font-size: 28rpx;">
-								未维护
-							</text>
+						<view class="ux-pl ux-pr ux-pb">
+							<view class="ux-flex ux-space-between ux-mt-small">
+								<text class="ux-text-small ux-opacity-7">预计时间</text>
+								<text class="ux-text-small">{{item.arrivalTime || '-'}}/{{item.departureTime || '-'}}</text>
+							</view>
+							<view class="ux-flex ux-space-between ux-mt">
+								<text class="ux-text-small ux-opacity-7">实际时间</text>
+								<text class="ux-text-small">{{calculateActualTime(item.arrivalTime, item.delayStatusCode, item.delayTime)}}/{{calculateActualTime(item.departureTime, item.delayStatusCode, item.delayTime)}}</text>
+							</view>
+							<view class="ux-flex ux-space-between ux-mt">
+								<text class="ux-text-small ux-opacity-7">停台</text>
+								<text class="ux-text-small">
+									<!-- 停台信息 -->
+									<text v-if="item.platform">{{item.platform}} 站台</text>
+									<button v-else-if="item.platform === null && showLoadAllButton" 
+										@click.stop="loadPlatformByStationName(item.stationName)" 
+										size="mini" type="primary" 
+										style="margin: 0; padding: 0 5px; font-size: 10px; line-height: 20px; display: inline;">
+										查询
+									</button>
+									<text v-else>-</text>
+								</text>
+							</view>
 						</view>
 					</view>
-					<view class="ux-pl ux-pr ux-pb">
-						<view class="ux-flex ux-space-between ux-mt-small">
-							<text class="ux-text-small ux-opacity-7">预计时间</text>
-							<text class="ux-text-small">{{item.arrive || '-'}}/{{item.depart || '-'}}</text>
+					<view v-if="delay.length === 0" v-for="(item,index) in (carData.timetable || [])" :key="index" 
+						class="ux-bg-white ux-border-radius ux-mt-small"
+						@click="item.platform ? showPlatformDetails(item, index) : null"
+						hover-class="ux-tap">
+						<view class="ux-flex">
+							<view style="border-bottom-left-radius: 10rpx; border-top-left-radius:10rpx; width: 12rpx;"
+								:style="'background-color: #606266;'">
+							</view>
+							<view class="ux-flex ux-space-between ux-pt ux-pl ux-pr ux-align-items-center" style="width: 100%;">
+								<text class="ux-bold" style="font-size: 32rpx;">{{item.station || ''}}</text>
+								<text :style="'color: #606266; font-weight: bold;'" class="ux-bold" style="font-size: 28rpx;">
+									未维护
+								</text>
+							</view>
 						</view>
-						<view class="ux-flex ux-space-between ux-mt">
-							<text class="ux-text-small ux-opacity-7">停台/检票口</text>
-							<text class="ux-text-small">
-								<text v-if="item.platform">{{item.platform}}</text>
-								<button v-else-if="item.platform === null && showLoadAllButton" 
-									@click="loadPlatformByStationName(item.station)" 
-									size="mini" type="primary" 
-									style="margin: 0; padding: 0 5px; font-size: 10px; line-height: 20px; display: inline;">
-									查询
-								</button>
-								<text v-else>-</text>
-								<text v-if="item.wicket">/{{item.wicket}}</text>
-							</text>
+						<view class="ux-pl ux-pr ux-pb">
+							<view class="ux-flex ux-space-between ux-mt-small">
+								<text class="ux-text-small ux-opacity-7">预计时间</text>
+								<text class="ux-text-small">{{item.arrive || '-'}}/{{item.depart || '-'}}</text>
+							</view>
+							<view class="ux-flex ux-space-between ux-mt">
+								<text class="ux-text-small ux-opacity-7">停台</text>
+								<text class="ux-text-small">
+									<!-- 停台信息 -->
+									<text v-if="item.platform">{{item.platform}}</text>
+									<button v-else-if="item.platform === null && showLoadAllButton" 
+										@click.stop="loadPlatformByStationName(item.station)" 
+										size="mini" type="primary" 
+										style="margin: 0; padding: 0 5px; font-size: 10px; line-height: 20px; display: inline;">
+										查询
+									</button>
+									<text v-else>-</text>
+								</text>
+							</view>
 						</view>
 					</view>
 				</view>
@@ -353,6 +362,58 @@
 			</view>
 		</view>
 	</view>
+	
+	<!-- 自定义停台详情模态框 -->
+	<view v-if="showPlatformModal" class="modal-overlay" @click="hidePlatformDetails">
+		<view class="modal-content" @click.stop>
+			<view class="modal-header">
+				<text class="modal-title">详情</text>
+				<text class="modal-close icon" @click="hidePlatformDetails">&#xe5cd;</text>
+			</view>
+			<view class="modal-body">
+				<view v-if="selectedStationIndex >= 0 && carData.timetable[selectedStationIndex]" class="ux-padding">
+					<!-- 车站名称 -->
+					<view class="ux-mb-small">
+						<text class="ux-bold" style="font-size: 36rpx;">{{carData.timetable[selectedStationIndex].station}}</text>
+					</view>
+					
+					<!-- 停台信息 -->
+					<view class="detail-item ux-bg-grey8 ux-border-radius ux-mt-small ux-padding-small">
+						<view class="ux-mb-small">
+							<text class="ux-text-small ux-opacity-5">停台</text>
+						</view>
+						<text class="ux-bold ux-text" style="font-size: 40rpx;">{{carData.timetable[selectedStationIndex].platform || '未查询'}}</text>
+					</view>
+					
+					<!-- 检票口信息 -->
+					<view class="detail-item ux-bg-grey8 ux-border-radius ux-mt-small ux-padding-small">
+						<view class="ux-mb-small">
+							<text class="ux-text-small ux-opacity-5">检票口</text>
+						</view>
+						<view v-if="carData.timetable[selectedStationIndex].entrance && carData.timetable[selectedStationIndex].entrance.length > 0">
+							<text v-for="(entrance, idx) in carData.timetable[selectedStationIndex].entrance" :key="idx" class="ux-text ux-mr-small">
+								{{entrance}}
+							</text>
+						</view>
+						<text v-else class="ux-text-small ux-opacity-5">暂无数据</text>
+					</view>
+					
+					<!-- 出站口信息 -->
+					<view class="detail-item ux-bg-grey8 ux-border-radius ux-mt-small ux-padding-small">
+						<view class="ux-mb-small">
+							<text class="ux-text-small ux-opacity-5">出站口</text>
+						</view>
+						<view v-if="carData.timetable[selectedStationIndex].exit && carData.timetable[selectedStationIndex].exit.length > 0">
+							<text v-for="(exit, idx) in carData.timetable[selectedStationIndex].exit" :key="idx" class="ux-text ux-mr-small">
+								{{exit}}
+							</text>
+						</view>
+						<text v-else class="ux-text-small ux-opacity-5">暂无数据</text>
+					</view>
+				</view>
+			</view>
+		</view>
+	</view>
 </template>
 
 <script>
@@ -419,9 +480,14 @@
 				"imageUploaderUsername": "暂缺图片", // NEW: For dynamic image source
 				"isImageLoading": true,
 				// 停台加载逻辑相关状态
-				"platformLoadThreshold": 10, 
-				"allPlatformWicketLoaded": false, 
+				"platformLoadThreshold": 15, 
+				"allPlatformLoaded": false, 
 				"showLoadAllButton": false, 
+				// 停台详情模态框相关状态
+				"showPlatformModal": false, 
+				"selectedStationIndex": -1, 
+				// 日期判断：是否是今天的日期
+				"isTodayDate": true, 
 			}
 		},
 		computed: {
@@ -441,7 +507,8 @@
 						depart: item.depart,
 						day: item.day,
 						platform: item.platform,
-						wicket: item.wicket,
+						entrance: item.entrance,
+						exit: item.exit,
 						// 存储索引，用于单点查询时定位
 						index: index, 
 					});
@@ -458,7 +525,8 @@
 							departureTime: timetableInfo.depart,
 							arrivalDate: timetableInfo.day,
 							platform: timetableInfo.platform,
-							wicket: timetableInfo.wicket,
+							entrance: timetableInfo.entrance,
+							exit: timetableInfo.exit,
 							stopMinutes: delayItem.stopMinutes, // 保留从API获取的停站时间
 							// 携带索引以便于单点查询
 							_index: timetableInfo.index
@@ -471,7 +539,8 @@
 						departureTime: null,
 						arrivalDate: null,
 						platform: null,
-						wicket: null,
+						entrance: [],
+						exit: [],
 						_index: -1 
 					};
 				});
@@ -483,6 +552,13 @@
 			this.keyword = options.keyword ? options.keyword.toUpperCase() : '';
 			this.title = this.train;
 			this.date = options.date || '';
+
+			// 判断日期是否是今天
+			const today = new Date();
+			const todayStr = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
+			// 支持两种格式：YYYYMMDD 或 YYYY-MM-DD
+			const dateStr = this.date.replace(/-/g, '');
+			this.isTodayDate = dateStr === todayStr || this.date === '';
 
 			const mode = uni.getStorageSync("mode");
 			this.isOnlyOfflineMode = uni.getStorageSync("ol") === true;
@@ -527,8 +603,14 @@
 			 * @param {number} index 时刻表行索引
 			 * @param {boolean} silent 是否不显示 Toast 提示 (用于批量加载)
 			 */
+			/**
+			 * 停台查询方法 (单个车站) - 使用 V2 API
+			 * @param {object} item 时刻表行数据 (carData.timetable中的元素)
+			 * @param {number} index 时刻表行索引
+			 * @param {boolean} silent 是否不显示 Toast 提示 (用于批量加载)
+			 */
 			async loadPlatform(item, index, silent = false) {
-				if (!item.stationTelecode || !this.date || !item.trainCode) {
+				if (!item.stationTelecode || !this.date || !this.train) {
 					if (!silent) {
 						uni.showToast({
 							title: '缺少查询参数',
@@ -544,33 +626,35 @@
 					});
 				}
 
-				// 确定 type 参数：始发站（第一个站，index=0）使用 'D'，其余使用 'A'
-				const requestType = index === 0 ? 'D' : 'A';
-				let result = { success: false, platform: '查询失败', wicket: '查询失败' };
+				// 确定 kind 参数：始发站（第一个站，index=0）使用 'departure'，其余使用 'arrival'
+				const requestKind = index === 0 ? 'departure' : 'arrival';
+				let result = { 
+					success: false, 
+					platform: '查询失败', 
+					entrance: [], 
+					exit: [] 
+				};
 
 				try {
 					const currentItem = this.carData.timetable[index]; 
 					
-					const response = await uniPost(
-						'https://mobile.12306.cn/wxxcx/wechat/bigScreen/getExit',
-						{
-							stationCode: item.stationTelecode,
-							trainDate: this.date, 
-							type: requestType, 
-							stationTrainCode: item.trainCode 
-						}
+					// 使用新的 V2 API
+					const response = await uniGet(
+						`https://rg-api.zenglingkun.cn/api/v2/getExit?trainNum=${encodeURIComponent(this.train)}&stationTelecode=${item.stationTelecode}&date=${this.date}&kind=${requestKind}`
 					);
 
-					if (response.data && response.data.status === true && response.data.data) {
+					if (response.data && response.data.success === true && response.data.data) {
 						result.success = true;
 						result.platform = response.data.data.platform || '未知';
-						result.wicket = response.data.data.wicket || '未知';
+						result.entrance = response.data.data.entrance || [];
+						result.exit = response.data.data.exit || [];
 						
-						// Success: Update the timetable item (which feeds the computed property)
+						// Success: Update the timetable item
 						this.$set(this.carData.timetable, index, {
 							...currentItem,
 							platform: result.platform,
-							wicket: result.wicket
+							entrance: result.entrance,
+							exit: result.exit
 						});
 						
 						if (!silent) {
@@ -582,13 +666,14 @@
 						// Failure 
 						if (!silent) {
 							uni.showToast({
-								title: response.data.errorMsg || '查询失败'
+								title: response.data.msg || '查询失败'
 							});
 						}
 						this.$set(this.carData.timetable, index, {
 							...currentItem,
 							platform: '查询失败',
-							wicket: '查询失败'
+							entrance: [],
+							exit: []
 						});
 					}
 				} catch (error) {
@@ -602,7 +687,8 @@
 					this.$set(this.carData.timetable, index, {
 						...currentItem,
 						platform: '网络错误',
-						wicket: '网络错误'
+						entrance: [],
+						exit: []
 					});
 				} finally {
 					if (!silent) {
@@ -616,7 +702,7 @@
 			 * 批量加载所有车站的停台信息
 			 */
 			async loadAllPlatforms() {
-				if (this.allPlatformWicketLoaded) return;
+				if (this.allPlatformLoaded) return;
 				
 				uni.showLoading({ title: '一键加载中...' });
 				
@@ -639,7 +725,7 @@
 						}
 					}
 					
-					this.allPlatformWicketLoaded = true;
+					this.allPlatformLoaded = true;
 					this.showLoadAllButton = false;
 					
 					uni.showToast({
@@ -704,48 +790,109 @@
 			},
 
 			/**
+			 * 根据车次类型代码推断车次类型文本
+			 * @param {string} numberKind 车次类型代码（G, D, C, Z, T, K等）
+			 * @returns {string} 车次类型文本
+			 */
+			getTypeByNumberKind: function(numberKind) {
+				switch (numberKind) {
+					case 'G':
+						return '高速';
+					case 'D':
+						return '动车';
+					case 'C':
+						return '城际';
+					case 'Z':
+						return '直达';
+					case 'T':
+						return '特快';
+					case 'K':
+						return '快速';
+					case 'Y':
+						return '旅游';
+					case 'L':
+						return '临客';
+					case 'S':
+						return '市郊';
+					default:
+						return '普客';
+				}
+			},
+
+			/**
 			 * 根据状态判断并返回状态文本
+			 */
+			/**
+			 * 格式化正晚点状态文本
 			 */
 			formatDelayStatus: function(delayStatus, delayTime) {
 				if (delayStatus === null || delayStatus === undefined) {
 					return '-';
 				}
-				if (delayStatus === 'ON_TIME' || delayTime === 0) {
-					return '正点';
+				
+				// 根据状态码返回对应的文本
+				switch (delayStatus) {
+					case 'ON_TIME':
+						return '正点';
+					case 'ON_TIME_PREDICTION':
+						return '预计正点';
+					case 'EARLY':
+						return `早点${Math.abs(delayTime)}分`;
+					case 'EARLY_PREDICTION':
+						return `预计早点${Math.abs(delayTime)}分`;
+					case 'DELAY':
+						return `晚点${delayTime}分`;
+					case 'DELAY_PREDICTION':
+						return `预计晚点${delayTime}分`;
+					case 'MAINTAINCE_MISSING':
+						return '未维护';
+					default:
+						return '-';
 				}
-				if (delayStatus === 'EARLY') {
-					return `早点${Math.abs(delayTime)}分`;
-				}
-				if (delayStatus === 'DELAY') {
-					return `晚点${delayTime}分`;
-				}
-				return '-';
 			},
 
 			/**
 			 * 根据状态返回对应的 CSS 颜色
 			 */
 			getDelayStatusColor: function(delayStatus, delayTime) {
-				if (delayStatus === 'EARLY' && delayTime !== 0) {
+				// 早点系列：绿色
+				if (delayStatus === 'EARLY' || delayStatus === 'EARLY_PREDICTION') {
 					return 'color: #27ae60; font-weight: bold;';
 				}
-				if (delayStatus === 'DELAY' && delayTime > 0) {
+				// 晚点系列：红色
+				if (delayStatus === 'DELAY' || delayStatus === 'DELAY_PREDICTION') {
 					return 'color: #c0392b; font-weight: bold;';
 				}
-				return 'color: #606266; font-weight: bold;'; // 正点时使用灰色
+				// 正点系列：蓝色（主题色）
+				if (delayStatus === 'ON_TIME' || delayStatus === 'ON_TIME_PREDICTION') {
+					return 'color: #114598; font-weight: bold;';
+				}
+				// 未维护或其他：灰色
+				return 'color: #606266; font-weight: bold;';
 			},
 
 			/**
 			 * 根据状态返回对应的背景色
 			 */
 			getDelayStatusBackground: function(delayStatus) {
-				if (delayStatus === 'EARLY') {
+				// 早点系列：绿色
+				if (delayStatus === 'EARLY' || delayStatus === 'EARLY_PREDICTION') {
 					return 'background-color: #27ae60;';
 				}
-				if (delayStatus === 'DELAY') {
+				// 晚点系列：红色
+				if (delayStatus === 'DELAY' || delayStatus === 'DELAY_PREDICTION') {
 					return 'background-color: #c0392b;';
 				}
-				return 'background-color: #114598;'; // 默认正点颜色
+				// 正点系列：蓝色（主题色）
+				if (delayStatus === 'ON_TIME' || delayStatus === 'ON_TIME_PREDICTION') {
+					return 'background-color: #114598;';
+				}
+				// 未维护：灰色
+				if (delayStatus === 'MAINTAINCE_MISSING') {
+					return 'background-color: #606266;';
+				}
+				// 默认：主题色
+				return 'background-color: #114598;';
 			},
 
 			/**
@@ -795,16 +942,18 @@
 					if (!this.train) return;
 
 					if (mode == "network") {
-						const resp = await uniGet(
-							`https://data.railgo.zenglingkun.cn/api/train/query?train=${encodeURIComponent(this.train)}`
+						// ===== 第一步：调用 V2 接口获取主数据 =====
+						const v2Resp = await uniGet(
+							`https://rg-api.zenglingkun.cn/api/v2/getTrainMain?trainNum=${encodeURIComponent(this.train)}&date=${encodeURIComponent(this.date || '')}`
 						);
-						const result = resp.data;
+						const v2Result = v2Resp.data;
 
-						if (result.error || !result.timetable || result.timetable.length === 0) {
+						// V2 接口失败，直接跳转 404，不再继续
+						if (!v2Result.success || !v2Result.data || !v2Result.data.timetable || v2Result.data.timetable.length === 0) {
 							this.carData = { /* ... reset data ... */ };
 							this.cardColor = '#114598';
 							uni.showToast({
-								title: '车次不存在'
+								title: '车次不存在或当日不开行'
 							})
 							const c = uni.getStorageSync("search");
 							uni.setStorage({
@@ -816,40 +965,65 @@
 							})
 							return; // 结束执行
 						}
-                        
-                        const processedDiagram = Array.isArray(result.diagram) ? result.diagram.map(item => ({
-                            ...item,
-                            // 确保 from 和 to 属性是数组，如果不是，则初始化为空数组
-                            from: Array.isArray(item.from) ? item.from : [],
-                            to: Array.isArray(item.to) ? item.to : []
-                        })) : [];
 
-						// 成功处理
+						// ===== 第二步：调用 V1 接口获取交路数据 =====
+						let diagramData = [];
+						let diagramType = '';
+						try {
+							const v1Resp = await uniGet(
+								`https://data.railgo.zenglingkun.cn/api/train/query?train=${encodeURIComponent(this.train)}`
+							);
+							const v1Result = v1Resp.data;
+							
+							if (!v1Result.error && v1Result.diagram) {
+								diagramData = Array.isArray(v1Result.diagram) ? v1Result.diagram.map(item => ({
+									...item,
+									from: Array.isArray(item.from) ? item.from : [],
+									to: Array.isArray(item.to) ? item.to : []
+								})) : [];
+								diagramType = v1Result.diagramType || '';
+							}
+						} catch (v1Error) {
+							console.warn("获取交路数据失败（不影响主数据显示）", v1Error);
+							// V1 失败，交路数据留空，不影响主数据显示
+							diagramData = [];
+							diagramType = '';
+						}
+
+						// ===== 第三步：合并数据 =====
+						// 成功处理，使用 V2 主数据 + V1 交路数据
 						this.carData = {
-							numberKind: result.numberKind || '',
-							numberFull: Array.isArray(result.numberFull) ? result.numberFull : [],
-							type: result.type || '',
-							timetable: (result.timetable || []).map(item => ({
+							numberKind: v2Result.data.numberKind || '',
+							numberFull: Array.isArray(v2Result.data.numberFull) ? v2Result.data.numberFull : [],
+							type: '', // V2 没有 type 字段，根据 numberKind 推断
+							timetable: (v2Result.data.timetable || []).map(item => ({
 								station: '',
 								stationTelecode: '',
 								trainCode: '',
 								arrive: '',
 								depart: '',
-								distance: '-',
-								speed: 0,
+								distance: '-', // V2 没有 distance 字段
+								speed: 0, // V2 没有 speed 字段
 								day: '-',
 								platform: null, 
-								wicket: null, 
+								entrance: [], 
+								exit: [], 
 								...item
 							})),
-							bureauName: result.bureauName || '',
-							runner: result.runner || '',
-							carOwner: result.carOwner || '',
-							car: result.car || '',
-							rundays: Array.isArray(result.rundays) ? result.rundays : [],
-							diagram: processedDiagram,
-							diagramType: result.diagramType
+							bureauName: v2Result.data.bureauShortName || '', // 使用 bureauShortName
+							bureau: v2Result.data.bureau || '', // 新字段：担当局代码
+							runner: v2Result.data.runner || '',
+							carOwner: v2Result.data.carOwner || '',
+							car: v2Result.data.car || '',
+							rundays: Array.isArray(v2Result.data.rundays) ? v2Result.data.rundays : [],
+							spend: v2Result.data.spend || 0, // 新字段：总运行时间
+							diagram: diagramData, // V1 的交路数据
+							diagramType: diagramType // V1 的交路类型
 						};
+						
+						// 根据 numberKind 推断 type
+						this.carData.type = this.getTypeByNumberKind(this.carData.numberKind);
+						
 						this.cardColor = this.colorMap[this.carData.numberKind] || '#114598';
 						loadSuccess = true; 
 
@@ -939,7 +1113,8 @@
 								speed: 0,
 								day: '-',
 								platform: null, 
-								wicket: null, 
+								entrance: [], 
+								exit: [], 
 								...item
 							}));
 							this.cardColor = this.colorMap[this.carData.numberKind] || '#114598';
@@ -988,8 +1163,9 @@
 					
 					// -------------------------------------------------------------------------
 					// **正晚点数据加载逻辑**
+					// 只有今天的日期才加载正晚点数据
 					let delayLoadSuccess = false;
-					if (loadSuccess && this.carData.timetable.length > 0) {
+					if (loadSuccess && this.carData.timetable.length > 0 && this.isTodayDate) {
 						if (this.train && this.date) {
 							uni.showLoading({
 								title: '加载正晚点数据'
@@ -1016,7 +1192,8 @@
 					
 					// -------------------------------------------------------------------------
 					// **停台自动/手动加载逻辑**
-					if (loadSuccess && this.carData.timetable.length > 0) {
+					// 只有今天的日期才加载停台信息
+					if (loadSuccess && this.carData.timetable.length > 0 && this.isTodayDate) {
 						if (this.carData.timetable.length < this.platformLoadThreshold) {
 							// 车站少于阈值，自动加载所有停台信息
 							this.loadAllPlatforms();
@@ -1077,6 +1254,22 @@
 			},
 			tabChange: function(e) {
 				this.selectIndex = e.index;
+			},
+			
+			/**
+			 * 显示停台详情模态框
+			 */
+			showPlatformDetails: function(item, index) {
+				this.selectedStationIndex = index;
+				this.showPlatformModal = true;
+			},
+			
+			/**
+			 * 隐藏停台详情模态框
+			 */
+			hidePlatformDetails: function() {
+				this.showPlatformModal = false;
+				this.selectedStationIndex = -1;
 			}
 		}
 	}
@@ -1089,5 +1282,56 @@
 
 	.status-bar {
 		height: var(--status-bar-height);
+	}
+	
+	/* 自定义模态框样式 */
+	.modal-overlay {
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		background-color: rgba(0, 0, 0, 0.5);
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		z-index: 9999;
+	}
+	
+	.modal-content {
+		width: 85%;
+		max-width: 600rpx;
+		background-color: #fff;
+		border-radius: 20rpx;
+		overflow: hidden;
+	}
+	
+	.modal-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 30rpx;
+		background-color: #114598;
+		color: #fff;
+	}
+	
+	.modal-title {
+		font-size: 32rpx;
+		font-weight: bold;
+	}
+	
+	.modal-close {
+		font-size: 40rpx;
+		cursor: pointer;
+	}
+	
+	.modal-body {
+		padding: 20rpx;
+		max-height: 60vh;
+		overflow-y: auto;
+	}
+	
+	.detail-item {
+		margin-bottom: 20rpx;
 	}
 </style>

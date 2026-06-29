@@ -51,6 +51,16 @@
 				nowIcon: uni.getStorageSync("nowIcon") || 'crh',
 				updateLogs: [
 					{
+						version: "v2.0.0 (20000)",
+						date: "2026-06-29",
+						items: [
+							"Changed: 将车次查询接口更换至V2接口",
+							"Changed: 将大屏接口更换至自有接口",
+							"Fixed: 正晚点查询",
+							"Feature: 点击正晚点卡片可查询更多信息"
+						]
+					},
+					{
 						version: "v1.8.1 (10801)",
 						date: "2026-06-20",
 						items: [
