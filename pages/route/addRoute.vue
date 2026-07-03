@@ -110,7 +110,9 @@ export default {
 			selectedFromStation: '',
 			selectedToStation: '',
 			isValidRoute: false,
-			cardColor: '#114598'
+			cardColor: '#114598',
+			diagram: [],
+			diagramType: ''
 		}
 	},
 	computed: {
@@ -160,40 +162,86 @@ export default {
 				const mode = uni.getStorageSync("mode");
 				
 				if (mode === "network") {
-					// 网络模式：从API获取数据
-					const resp = await uniGet(
-						`https://data.railgo.zenglingkun.cn/api/train/query?train=${encodeURIComponent(this.trainNum)}`
-					);
-					const result = resp.data;
+					// 网络模式：先用 V2 获取主数据，再用 V1 补全交路/里程
+					try {
+						const v2Base = uni.getStorageSync('service_source_train_v2') || 'https://rg-api.zenglingkun.cn';
+						const v2Resp = await uniGet(
+							v2Base + `/api/v2/getTrainMain?trainNum=${encodeURIComponent(this.trainNum)}&date=${encodeURIComponent(this.date)}`
+						);
+						const v2Result = v2Resp.data;
 
-					if (result.error || !result.timetable || result.timetable.length === 0) {
-						uni.showToast({
-							title: '车次不存在',
-							icon: 'error'
+						if (!v2Result || !v2Result.success || !v2Result.data) {
+							throw new Error("V2 接口未返回数据");
+						}
+
+						// 接着调用 V1 获取交路和里程补全
+						let diagramData = [];
+						let diagramType = '';
+						let v1Timetable = null;
+						try {
+							const v1Base = uni.getStorageSync('service_source_train') || 'https://data.railgo.zenglingkun.cn';
+							const v1Resp = await uniGet(
+								v1Base + `/api/train/query?train=${encodeURIComponent(this.trainNum)}`
+							);
+							const v1Result = v1Resp.data;
+							if (!v1Result.error) {
+								v1Timetable = v1Result.timetable || null;
+								if (v1Result.diagram) {
+									diagramData = Array.isArray(v1Result.diagram) ? v1Result.diagram : [];
+									diagramType = v1Result.diagramType || '';
+								}
+							}
+						} catch (v1Err) {
+							console.warn("V1 数据获取失败（不影响主数据）", v1Err);
+						}
+
+						// 构建 V1 时刻表映射（用于补全 distance/speed）
+						const v1TimetableMap = {};
+						if (v1Timetable) {
+							v1Timetable.forEach(item => {
+								if (item.stationTelecode) {
+									v1TimetableMap[item.stationTelecode] = item;
+								}
+							});
+						}
+
+						const v2Data = v2Result.data;
+						this.from = v2Data.timetable && v2Data.timetable.length > 0 ? v2Data.timetable[0].station : '';
+						this.to = v2Data.timetable && v2Data.timetable.length > 0 ? v2Data.timetable[v2Data.timetable.length - 1].station : '';
+						this.timetable = (v2Data.timetable || []).map(item => {
+							const v1Match = v1TimetableMap[item.stationTelecode];
+							return {
+								stationName: item.station || '',
+								stationTelecode: item.stationTelecode || '',
+								trainCode: item.trainCode || '',
+								arrive: item.arrive || '',
+								depart: item.depart || '',
+								distance: (v1Match && v1Match.distance) ? v1Match.distance : '-',
+								speed: (v1Match && v1Match.speed) ? v1Match.speed : 0,
+								day: item.day || '-',
+								isStart: false,
+								isEnd: false
+							};
 						});
+						// 标记首尾站
+						if (this.timetable.length > 0) {
+							this.timetable[0].isStart = true;
+							this.timetable[this.timetable.length - 1].isEnd = true;
+						}
+						this.bureauName = v2Data.bureauShortName || '';
+						this.car = v2Data.car || '';
+						this.runner = v2Data.runner || '';
+
+						// 保存 V1 的交路数据到行程中
+						this.diagram = diagramData;
+						this.diagramType = diagramType;
+
+						this.cardColor = getTrainTypeColor(this.trainNum);
+					} catch (v2Err) {
+						console.error("V2 接口获取失败", v2Err);
+						uni.showToast({ title: '车次不存在', icon: 'error' });
 						return;
 					}
-
-					// 保存车次详细数据
-					this.from = result.timetable && result.timetable.length > 0 ? result.timetable[0].station : '';
-					this.to = result.timetable && result.timetable.length > 0 ? result.timetable[result.timetable.length - 1].station : '';
-					this.timetable = (result.timetable || []).map(item => ({
-						stationName: item.station || '',
-						stationTelecode: item.stationTelecode || '',
-						trainCode: item.trainCode || '',
-						arrive: item.arrive || '',
-						depart: item.depart || '',
-						distance: item.distance || '-',
-						speed: item.speed || 0,
-						day: item.day || '-',
-						isStart: item.isStart || false,
-						isEnd: item.isEnd || false
-					}));
-					this.bureauName = result.bureauName || '';
-					this.car = result.car || '';
-					this.runner = result.runner || '';
-					// 设置卡片颜色
-					this.cardColor = getTrainTypeColor(this.trainNum);
 				} else {
 					// 离线模式：从本地数据库获取数据
 					const result = await doQuery("SELECT * FROM trains WHERE number='" + this.trainNum + "'", ["numberFull", "type", "timetable", "bureauName", "runner", "car", "carOwner", "diagram", "spend", "rundays", "route", "isTemp", "isFuxing"]);
@@ -331,7 +379,9 @@ export default {
 				bureauName: this.bureauName,
 				car: this.car,
 				runner: this.runner,
-				timetable: this.timetable // 保存完整的时刻表
+				timetable: this.timetable, // 保存完整的时刻表
+				diagram: this.diagram,
+				diagramType: this.diagramType
 			};
 			
 			// 保存到存储 - 使用JSON文件方式

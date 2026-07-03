@@ -18,7 +18,7 @@
 							style="font-size:50rpx;padding-left:5rpx;">{{routeData.trainNum.substring(1) || (routeData.numberFull || []).join("/").replace(routeData.numberKind, "").replace(routeData.numberKind, "")}}</text>
 					</view>
 					<text class="ux-badge ux-text-small ux-color-white" style="padding:5rpx 15rpx;"
-						:style="'background-color:'+cardColor">{{trainTypeDesc}}</text>
+						:style="'background-color:'+cardColor">{{routeData.diagramType || ''}}  {{trainTypeDesc}}</text>
 				</view>
 				<view class="ux-flex ux-space-between ux-mt-small ux-pl ux-pr ux-pt-small ux-color-white"
 					:style="'background-color:'+cardColor">
@@ -182,6 +182,37 @@
 					class="ux-padding ux-text-center">
 					暂无担当信息
 				</view>
+
+				<!-- 交路数据 -->
+				<view v-if="routeData.diagram && routeData.diagram.length > 0">
+					<uni-section :title="'交路' " type="line" style="background-color: transparent;"
+						title-font-size="28rpx"></uni-section>
+					<navigator v-for="(item,index) in (routeData.diagram || [])" :key="index"
+						:url="'/pages/train/trainResult?keyword='+(item.train_num || item.number)+'&date='+date">
+						<view class="ux-bg-white ux-border-radius ux-mt-small ux-flex">
+							<view style="border-bottom-left-radius: 10rpx; border-top-left-radius:10rpx;"
+								:style="'background-color:'+colorMap[(item.train_num || item.number)[0]]">
+								&nbsp;&nbsp;
+							</view>
+							<view class="ux-flex ux-align-items-center ux-space-between ux-pr ux-pt ux-pb ux-pl-small"
+								style="width:100%;">
+								<view style="width:calc(100% - 70px);">
+									<view class="ux-flex ux-align-items-center">
+										<text class="consolas" style="font-size:40rpx;">{{item.train_num || item.number || ''}}</text>
+									</view>
+									<text class="ux-text-small">
+										{{Array.isArray(item.from) && item.from.length > 0 ? item.from[0] : ''}}
+										{{Array.isArray(item.from) && item.from.length > 1 ? item.from[1] : ''}}
+										⋙ 
+										{{Array.isArray(item.to) && item.to.length > 0 ? item.to[0] : ''}}
+										{{Array.isArray(item.to) && item.to.length > 1 ? item.to[1] : ''}}
+									</text>
+								</view>
+								<text class="ux-text"><text class="icon">&#xe5c8;</text></text>
+							</view>
+						</view>
+					</navigator>
+				</view>
 			</view>
 
 			<view class="ux-padding ux-text-center" v-if="selectIndex==2">
@@ -206,7 +237,12 @@
 import { getTrainTypeColor, getTrainTypeDescription } from "@/scripts/config.js";
 import { CAR_PERFORMANCE } from "@/scripts/config.js";
 import { uniGet } from "@/scripts/req.js";
-
+import {
+		KEYS_STRUCT_STATIONS,
+		KEYS_STRUCT_TRAINS,
+		TRAIN_KIND_COLOR_MAP
+	} from "@/scripts/config.js";
+	
 export default {
 	data() {
 		return {
@@ -226,6 +262,7 @@ export default {
 			defaultImageUrl: "",
 			imageUploaderUsername: "暂缺图片",
 			isImageLoading: true,
+			"colorMap": TRAIN_KIND_COLOR_MAP,
 		}
 	},
 	computed: {
@@ -268,8 +305,9 @@ export default {
 			
 			// 初始化图片
 			const carModel = this.routeData.car ? this.routeData.car.replace(' 重联', '') : null;
+			const tpBase = uni.getStorageSync('service_source_tp') || 'https://tp.railgo.zenglingkun.cn';
 			if (carModel) {
-				this.carImageUrl = `https://tp.railgo.zenglingkun.cn/api/${encodeURIComponent(carModel)}.png`;
+				this.carImageUrl = tpBase + `/api/${encodeURIComponent(carModel)}.png`;
 				// 尝试获取图片信息
 				this.fetchImageSource();
 			} else {
@@ -310,11 +348,12 @@ export default {
 				return;
 			}
 		
+			const tpBase = uni.getStorageSync('service_source_tp') || 'https://tp.railgo.zenglingkun.cn';
 			// 设置默认的备用地址（原有的 .png 接口）
-			this.defaultImageUrl = `https://tp.railgo.zenglingkun.cn/api/${encodeURIComponent(carModel)}.png`;
+			this.defaultImageUrl = tpBase + `/api/${encodeURIComponent(carModel)}.png`;
 		
 			try {
-				const url = `https://tp.railgo.zenglingkun.cn/api/${encodeURIComponent(carModel)}.json`;
+				const url = tpBase + `/api/${encodeURIComponent(carModel)}.json`;
 				const resp = await uniGet(url);
 		
 				if (resp.data && resp.data.success && resp.data.data) {
@@ -340,6 +379,12 @@ export default {
 			} finally {
 				this.isImageLoading = false;
 			}
+		},
+		goToDiagramTrain(trainNum) {
+			if (!trainNum) return;
+			uni.navigateTo({
+				url: `/pages/train/trainResult?keyword=${encodeURIComponent(trainNum)}&date=`
+			});
 		},
 	}
 }
