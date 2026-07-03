@@ -972,6 +972,7 @@
 						// ===== 第二步：调用 V1 接口获取交路数据 =====
 						let diagramData = [];
 						let diagramType = '';
+						let v1Timetable = null; // 用于补全 distance/speed
 						try {
 							const trainBase = uni.getStorageSync('service_source_train') || 'https://data.railgo.zenglingkun.cn';
 							const v1Resp = await uniGet(
@@ -979,19 +980,26 @@
 							);
 							const v1Result = v1Resp.data;
 							
-							if (!v1Result.error && v1Result.diagram) {
-								diagramData = Array.isArray(v1Result.diagram) ? v1Result.diagram.map(item => ({
-									...item,
-									from: Array.isArray(item.from) ? item.from : [],
-									to: Array.isArray(item.to) ? item.to : []
-								})) : [];
-								diagramType = v1Result.diagramType || '';
+							if (!v1Result.error) {
+								// 保存 V1 时刻表用于补全 distance/speed
+								v1Timetable = v1Result.timetable || null;
+								
+								// 获取交路数据
+								if (v1Result.diagram) {
+									diagramData = Array.isArray(v1Result.diagram) ? v1Result.diagram.map(item => ({
+										...item,
+										from: Array.isArray(item.from) ? item.from : [],
+										to: Array.isArray(item.to) ? item.to : []
+									})) : [];
+									diagramType = v1Result.diagramType || '';
+								}
 							}
 						} catch (v1Error) {
-							console.warn("获取交路数据失败（不影响主数据显示）", v1Error);
+							console.warn("获取V1数据失败（不影响主数据显示）", v1Error);
 							// V1 失败，交路数据留空，不影响主数据显示
 							diagramData = [];
 							diagramType = '';
+							v1Timetable = null;
 						}
 
 						// ===== 第三步：合并数据 =====
@@ -999,8 +1007,8 @@
 						
 						// 构建 V1 时刻表查询映射（按 stationTelecode 匹配）
 						const v1TimetableMap = {};
-						if (v1Result && v1Result.timetable) {
-							(v1Result.timetable || []).forEach(item => {
+						if (v1Timetable) {
+							v1Timetable.forEach(item => {
 								if (item.stationTelecode) {
 									v1TimetableMap[item.stationTelecode] = item;
 								}
