@@ -61,10 +61,10 @@
 						text: "优先离线",
 						value: "local"
 					},
-					{
-						text: "仅离线",
-						value: "ol"
-					}
+					// {
+					// 	text: "仅离线",
+					// 	value: "ol"
+					// }
 				],
 				"checked": "network",
 				"msgType": "success",
@@ -87,7 +87,6 @@
 		methods: {
 			finish: function() {
 				uni.setStorageSync("mode", this.checked)
-				uni.setStorageSync("oobe", true)
 				uni.setStorageSync("ol", false)
 				if (this.checked == "local" || this.checked == "ol") {
 					if (this.checked == "ol"){
@@ -111,8 +110,9 @@
 					this.$refs.next_add.open();
 					// #endif
 				} else {
+					uni.setStorageSync("oobe", true)
 					uni.reLaunch({
-						url: '/pages/index/index'
+						url: '/pages/oobe/source'
 					})
 				}
 				
@@ -121,7 +121,6 @@
 			},
 			confirmDownloadNow: function() {
 				uni.setStorageSync("mode", this.checked)
-				uni.setStorageSync("oobe", true)
 				uni.navigateTo({
 					url: '/pages/oobe/download'
 				})

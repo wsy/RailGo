@@ -222,7 +222,21 @@
 			}
 
 			if (uni.getStorageSync('oobe')) {
-				//* 不操作 */
+				// 检查服务源是否已全部配置
+				const serviceCodes = ['train', 'train_v2', 'station', 'emu_run', 'emu_assignment', 'icon', 'update_pack', 'update_db', 'bigScreen', 'trainDelay', 'exit', 'coach', 'mapLine', 'notice', 'tp'];
+				let hasEmptySource = false;
+				for (const code of serviceCodes) {
+					if (!uni.getStorageSync('service_source_' + code)) {
+						hasEmptySource = true;
+						break;
+					}
+				}
+				if (hasEmptySource) {
+					uni.reLaunch({
+						url: '/pages/about/source'
+					});
+					return;
+				}
 			} else {
 				uni.reLaunch({
 					url: '/pages/oobe/welcome'

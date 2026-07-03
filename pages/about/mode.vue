@@ -61,10 +61,10 @@
 						text: "优先离线",
 						value: "local"
 					},
-					{
-						text: "仅离线",
-						value: "ol"
-					}
+					// {
+					// 	text: "仅离线",
+					// 	value: "ol"
+					// }
 				],
 				"checked": "network",
 				"msgType": "success",

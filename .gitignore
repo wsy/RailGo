@@ -3,3 +3,4 @@ unpackage/
 node_modules/
 rg-others/
 API.md
+*.txt

@@ -94,11 +94,11 @@ import {uniGet} from "@/scripts/req.js";
 		        await loadDB();
 
 		
-		        // 设置完成标志并跳转
+		        // 设置完成标志并跳转到服务源配置
 		        uni.setStorageSync("oobe", true);
 		        uni.setStorageSync("mode", "local");
 		        uni.reLaunch({ 
-		            url: '/pages/index/index' 
+		            url: '/pages/oobe/source' 
 		        });
 		
 		    } catch (e) {
@@ -116,7 +116,7 @@ import {uniGet} from "@/scripts/req.js";
 		    uni.setStorageSync("oobe", true);
 		    uni.setStorageSync("mode", "network");
 		    uni.reLaunch({ 
-		        url: '/pages/index/index' 
+		        url: '/pages/oobe/source' 
 		    });
 		    // #endif
 		},
