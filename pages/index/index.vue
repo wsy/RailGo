@@ -113,8 +113,8 @@
 		<br>
 		<!-- 图片广告 -->
 		<swiper v-if="bannerImages.length > 0" class="ux-border-radius-large" :style="{height: swiperHeight}" indicator-dots circular autoplay>
-			<swiper-item v-for="(url, index) in bannerImages" :key="index">
-				<image :src="url" mode="widthFix" class="ux-border-radius-large" style="width: 100%;" @load="onImageLoad"></image>
+			<swiper-item v-for="(item, index) in bannerImages" :key="index">
+				<image :src="item.img" mode="widthFix" class="ux-border-radius-large" style="width: 100%;" @load="onImageLoad" @click="openBannerLink(item.jump)"></image>
 			</swiper-item>
 		</swiper>
 		<image v-else class="ux-border-radius-large" src="/static/overlay/index_banner_1.png" style="width:100%;" mode="widthFix"></image>
@@ -162,12 +162,16 @@
 			},
 			async fetchRemoteData() {
 				try {
-					const noticeResponse = await uniGet("https://api.state.railgo.zenglingkun.cn/notice");
+					const noticeBase = uni.getStorageSync('service_source_notice') || 'https://gateway.zenglingkun.cn';
+					const noticeResponse = await uniGet(noticeBase + "/api/v2/notice");
 					if (noticeResponse.data && noticeResponse.data.length > 0) {
 						this.items = noticeResponse.data;
 					}
-					const picResponse = await uniGet("https://api.state.railgo.zenglingkun.cn/pic");
-					this.bannerImages = picResponse.data;
+					const picBase = uni.getStorageSync('service_source_notice') || 'https://gateway.zenglingkun.cn';
+					const picResponse = await uniGet(picBase + "/api/v2/pic_ad");
+					if (picResponse.data && Array.isArray(picResponse.data)) {
+						this.bannerImages = picResponse.data;
+					}
 				} catch (error) {
 					console.error('Fetch error:', error);
 				}
@@ -176,6 +180,16 @@
 				const { width, height } = e.detail;
 				const screenWidth = uni.getSystemInfoSync().windowWidth;
 				this.swiperHeight = `${(screenWidth * height) / width}px`;
+			},
+			openBannerLink(jumpUrl) {
+				if (jumpUrl) {
+					// #ifdef APP-PLUS
+					plus.runtime.openURL(jumpUrl);
+					// #endif
+					// #ifdef H5
+					window.open(jumpUrl, '_blank');
+					// #endif
+				}
 			}
 		}
 	};

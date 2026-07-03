@@ -91,7 +91,8 @@
 				this.loading = true;
 				this.coachData = null; // 请求前先清空旧数据，避免上一次的结果残留导致视觉闪烁
 				try {
-					const apiUrl = `https://rg-api.zenglingkun.cn/api/v2/getCoachPic?train=${this.trainCode}`;
+					const coachBase = uni.getStorageSync('service_source_coach') || 'https://rg-api.zenglingkun.cn';
+					const apiUrl = coachBase + `/api/v2/getCoachPic?train=${this.trainCode}`;
 					// 使用 UniGet 发起请求
 					const res = await uniGet(apiUrl);
 					

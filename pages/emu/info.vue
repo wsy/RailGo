@@ -196,7 +196,8 @@ export default {
 			uni.showLoading({ title: "拉取档案中..." });
 			
 			try {
-				const apiUrl = `https://emu.railgo.zenglingkun.cn/api/car/info?id=${encodeURIComponent(this.emuId)}`;
+				const assignmentBase = uni.getStorageSync('service_source_emu_assignment') || 'https://emu.railgo.zenglingkun.cn';
+				const apiUrl = assignmentBase + `/api/car/info?id=${encodeURIComponent(this.emuId)}`;
 				const response = await uniGet(apiUrl);
 				
 				if (response && response.data && response.data.success && response.data.data) {
@@ -230,7 +231,8 @@ export default {
 		// 获取最近 3 条运行状态
 		async fetchRecentRuns() {
 			try {
-				const runApiUrl = `https://emu.railgo.zenglingkun.cn/api/query?keyword=${encodeURIComponent(this.emuId)}`;
+				const runBase = uni.getStorageSync('service_source_emu_run') || 'https://emu.railgo.zenglingkun.cn';
+				const runApiUrl = runBase + `/api/query?keyword=${encodeURIComponent(this.emuId)}`;
 				const runResp = await uniGet(runApiUrl);
 				if (runResp && runResp.data && runResp.data.success && runResp.data.data) {
 					// 截取前 3 条最新数据展现
@@ -251,7 +253,8 @@ export default {
 			}
 			
 			try {
-				const metaUrl = `https://tp.railgo.zenglingkun.cn/api/${encodeURIComponent(modelName)}.json`;
+				const tpBase = uni.getStorageSync('service_source_tp') || 'https://tp.railgo.zenglingkun.cn';
+				const metaUrl = tpBase + `/api/${encodeURIComponent(modelName)}.json`;
 				const resp = await uniGet(metaUrl);
 				
 				if (resp && resp.data && resp.data.success && resp.data.data && resp.data.data.image_url) {

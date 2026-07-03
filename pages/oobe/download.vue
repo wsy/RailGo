@@ -43,7 +43,8 @@ import {uniGet} from "@/scripts/req.js";
 		async onReady() {
 		    // #ifdef APP-PLUS
 		    try {
-		        const dbUrlResponse = await uniGet("https://api.state.railgo.zenglingkun.cn/api/v1/url/db");
+		        const dbUrlBase = uni.getStorageSync('service_source_update_db') || 'https://gateway.zenglingkun.cn';
+		        const dbUrlResponse = await uniGet(dbUrlBase + "/api/v2/url/db");
 		        const downloadUrl = dbUrlResponse.data.url;
 		
 		        const downloadResult = await new Promise((resolve, reject) => {
@@ -78,7 +79,8 @@ import {uniGet} from "@/scripts/req.js";
 		        
 		        // 获取数据库信息
 		        this.err = "正在获取数据库信息...";
-		        const finalInfoResponse = await uniGet("https://api.state.railgo.zenglingkun.cn/api/v1/info");
+		        const infoBase = uni.getStorageSync('service_source_update_db') || 'https://gateway.zenglingkun.cn';
+		        const finalInfoResponse = await uniGet(infoBase + "/api/v2/info");
 		        
 		        if (finalInfoResponse.status === 200) {
 		            uni.setStorageSync("offlineDataVersion", finalInfoResponse.data.latest_db);

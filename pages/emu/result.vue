@@ -168,18 +168,19 @@ export default {
 			uni.showLoading({ title: '数据检索中...' });
 			
 			try {
-				const apiBase = "https://emu.railgo.zenglingkun.cn";
+				const runBase = uni.getStorageSync('service_source_emu_run') || 'https://emu.railgo.zenglingkun.cn';
+				const assignmentBase = uni.getStorageSync('service_source_emu_assignment') || 'https://emu.railgo.zenglingkun.cn';
 				let apiUrl = "";
 				
 				if (this.isQueryTypeRun) {
-					apiUrl = `${apiBase}/api/query?keyword=${encodeURIComponent(this.keyword)}`;
+					apiUrl = runBase + `/api/query?keyword=${encodeURIComponent(this.keyword)}`;
 					const response = await uniGet(apiUrl);
 					
 					if (response && response.data && response.data.success && response.data.data) {
 						this.displayData = response.data.data;
 					}
 				} else {
-					apiUrl = `${apiBase}/api/car/query?keyword=${encodeURIComponent(this.keyword)}&keywordType=${this.keywordType}`;
+					apiUrl = assignmentBase + `/api/car/query?keyword=${encodeURIComponent(this.keyword)}&keywordType=${this.keywordType}`;
 					const response = await uniGet(apiUrl);
 					
 					if (response && response.data && response.data.success && response.data.data) {

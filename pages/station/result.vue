@@ -462,7 +462,8 @@
 				let success = false;
 				if (mode == "network") {
 					try {
-						const resp = await uniGet(`https://data.railgo.zenglingkun.cn/api/station/query?telecode=${this.keyword}`);
+						const stationBase = uni.getStorageSync('service_source_station') || 'https://data.railgo.zenglingkun.cn';
+						const resp = await uniGet(stationBase + `/api/station/query?telecode=${this.keyword}`);
 						const result = resp.data;
 						if (result.error) {
 							uni.showToast({
@@ -608,7 +609,8 @@
 				
 				try {
 					// 使用 V2 API
-					const url = `https://rg-api.zenglingkun.cn/api/v2/getStationBigScreen?stationTelecode=${encodeURIComponent(this.keyword)}&kind=${encodeURIComponent(this.bigScreenKind)}`;
+					const bigScreenBase = uni.getStorageSync('service_source_bigScreen') || 'https://rg-api.zenglingkun.cn';
+					const url = bigScreenBase + `/api/v2/getStationBigScreen?stationTelecode=${encodeURIComponent(this.keyword)}&kind=${encodeURIComponent(this.bigScreenKind)}`;
 					
 					const resp = await uniGet(url);
 					

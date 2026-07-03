@@ -133,8 +133,9 @@ export default {
 			});
 			
 			try {
+				const trainBase = uni.getStorageSync('service_source_train') || 'https://data.railgo.zenglingkun.cn';
 				const response = await uniGet(
-					`https://data.railgo.zenglingkun.cn/api/train/query?train=${encodeURIComponent(this.trainParams.train)}`
+					trainBase + `/api/train/query?train=${encodeURIComponent(this.trainParams.train)}`
 				);
 				this.trainResult = response.data;
 				uni.hideLoading();
@@ -161,8 +162,9 @@ export default {
 			});
 			
 			try {
+				const stationBase = uni.getStorageSync('service_source_station') || 'https://data.railgo.zenglingkun.cn';
 				const response = await uniGet(
-					`https://data.railgo.zenglingkun.cn/api/station/query?telecode=${encodeURIComponent(this.stationParams.telecode)}`
+					stationBase + `/api/station/query?telecode=${encodeURIComponent(this.stationParams.telecode)}`
 				);
 				this.stationResult = response.data;
 				uni.hideLoading();

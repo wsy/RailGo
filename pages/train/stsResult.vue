@@ -241,7 +241,8 @@
 				if (mode == "network") {
 					try {
 						uni.showLoading({ title: "加载中" });
-						let apiUrl = `https://data.railgo.zenglingkun.cn/api/train/sts_query?from=${this.from}&to=${this.to}&date=${this.date}`;
+						const trainBase = uni.getStorageSync('service_source_train') || 'https://data.railgo.zenglingkun.cn';
+						let apiUrl = trainBase + `/api/train/sts_query?from=${this.from}&to=${this.to}&date=${this.date}`;
 						if (this.isVague) apiUrl += "&city=true";
 						const resp = await uniGet(apiUrl);
 						if (resp.data.error) {

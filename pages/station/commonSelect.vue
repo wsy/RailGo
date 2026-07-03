@@ -90,7 +90,8 @@ import {uniGet} from "@/scripts/req";
 				}
 				if (mode == "network") {
 					try {
-						const resp = await uniGet(`https://data.railgo.zenglingkun.cn/api/station/preselect?keyword=${encodeURIComponent(this.keyword)}`);
+						const stationBase = uni.getStorageSync('service_source_station') || 'https://data.railgo.zenglingkun.cn';
+						const resp = await uniGet(stationBase + `/api/station/preselect?keyword=${encodeURIComponent(this.keyword)}`);
 						this.stationsList = resp.data;
 					} catch (error) {
 						console.error("网络加载失败", error);

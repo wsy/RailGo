@@ -137,11 +137,12 @@ import {uniGet} from "@/scripts/req.js";
 					{ name: '百香果', iconKey: 'passion', storageKey: 'passionUnlock' },
 					{ name: '露星', iconKey: 'girl', storageKey: 'railgoGirlUnlock' }
 				],
-				apiUrl: 'https://api.state.railgo.zenglingkun.cn/api/cc',
+				apiUrl: '',
 			};
 		},
 		mounted() {
 			this.updateUnlockStatus();
+			this.apiUrl = (uni.getStorageSync('service_source_icon') || 'https://gateway.zenglingkun.cn') + '/api/v2/cc';
 		},
 		methods: {
 			back: function() {

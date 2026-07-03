@@ -639,8 +639,9 @@
 					const currentItem = this.carData.timetable[index]; 
 					
 					// 使用新的 V2 API
+					const exitBase = uni.getStorageSync('service_source_exit') || 'https://rg-api.zenglingkun.cn';
 					const response = await uniGet(
-						`https://rg-api.zenglingkun.cn/api/v2/getExit?trainNum=${encodeURIComponent(this.train)}&stationTelecode=${item.stationTelecode}&date=${this.date}&kind=${requestKind}`
+						exitBase + `/api/v2/getExit?trainNum=${encodeURIComponent(this.train)}&stationTelecode=${item.stationTelecode}&date=${this.date}&kind=${requestKind}`
 					);
 
 					if (response.data && response.data.success === true && response.data.data) {
@@ -915,7 +916,8 @@
 			    }
 			
 			    try {
-			        const url = `https://tp.railgo.zenglingkun.cn/api/${encodeURIComponent(carModel)}.json`;
+			        const tpBase = uni.getStorageSync('service_source_tp') || 'https://tp.railgo.zenglingkun.cn';
+			        const url = tpBase + `/api/${encodeURIComponent(carModel)}.json`;
 			        const resp = await uniGet(url);
 			
 			        if (resp.data && resp.data.success && resp.data.data && resp.data.data.image_url) {
@@ -943,8 +945,9 @@
 
 					if (mode == "network") {
 						// ===== 第一步：调用 V2 接口获取主数据 =====
+						const trainV2Base = uni.getStorageSync('service_source_train_v2') || 'https://rg-api.zenglingkun.cn';
 						const v2Resp = await uniGet(
-							`https://rg-api.zenglingkun.cn/api/v2/getTrainMain?trainNum=${encodeURIComponent(this.train)}&date=${encodeURIComponent(this.date || '')}`
+							trainV2Base + `/api/v2/getTrainMain?trainNum=${encodeURIComponent(this.train)}&date=${encodeURIComponent(this.date || '')}`
 						);
 						const v2Result = v2Resp.data;
 
@@ -970,8 +973,9 @@
 						let diagramData = [];
 						let diagramType = '';
 						try {
+							const trainBase = uni.getStorageSync('service_source_train') || 'https://data.railgo.zenglingkun.cn';
 							const v1Resp = await uniGet(
-								`https://data.railgo.zenglingkun.cn/api/train/query?train=${encodeURIComponent(this.train)}`
+								trainBase + `/api/train/query?train=${encodeURIComponent(this.train)}`
 							);
 							const v1Result = v1Resp.data;
 							
@@ -991,25 +995,39 @@
 						}
 
 						// ===== 第三步：合并数据 =====
-						// 成功处理，使用 V2 主数据 + V1 交路数据
+						// 成功处理，使用 V2 主数据 + V1 交路数据 + V1 时刻表补全
+						
+						// 构建 V1 时刻表查询映射（按 stationTelecode 匹配）
+						const v1TimetableMap = {};
+						if (v1Result && v1Result.timetable) {
+							(v1Result.timetable || []).forEach(item => {
+								if (item.stationTelecode) {
+									v1TimetableMap[item.stationTelecode] = item;
+								}
+							});
+						}
+						
 						this.carData = {
 							numberKind: v2Result.data.numberKind || '',
 							numberFull: Array.isArray(v2Result.data.numberFull) ? v2Result.data.numberFull : [],
 							type: '', // V2 没有 type 字段，根据 numberKind 推断
-							timetable: (v2Result.data.timetable || []).map(item => ({
-								station: '',
-								stationTelecode: '',
-								trainCode: '',
-								arrive: '',
-								depart: '',
-								distance: '-', // V2 没有 distance 字段
-								speed: 0, // V2 没有 speed 字段
-								day: '-',
-								platform: null, 
-								entrance: [], 
-								exit: [], 
-								...item
-							})),
+							timetable: (v2Result.data.timetable || []).map(item => {
+								const v1Match = v1TimetableMap[item.stationTelecode];
+								return {
+									station: '',
+									stationTelecode: '',
+									trainCode: '',
+									arrive: '',
+									depart: '',
+									distance: v1Match && v1Match.distance ? v1Match.distance : '-',
+									speed: v1Match && v1Match.speed ? v1Match.speed : 0,
+									day: '-',
+									platform: null, 
+									entrance: [], 
+									exit: [], 
+									...item
+								};
+							}),
 							bureauName: v2Result.data.bureauShortName || '', // 使用 bureauShortName
 							bureau: v2Result.data.bureau || '', // 新字段：担当局代码
 							runner: v2Result.data.runner || '',
@@ -1171,8 +1189,9 @@
 								title: '加载正晚点数据'
 							}) // [2] 正晚点加载开始
 							try {
+								const delayBase = uni.getStorageSync('service_source_trainDelay') || 'https://rg-api.zenglingkun.cn';
 								const delayResp = await uniGet(
-									`https://rg-api.zenglingkun.cn/api/v2/getTrainDelayAll?trainNum=${encodeURIComponent(this.train)}`
+									delayBase + `/api/v2/getTrainDelayAll?trainNum=${encodeURIComponent(this.train)}`
 								);
 								if (delayResp.data && Array.isArray(delayResp.data.data)) {
 									this.delay = delayResp.data.data;

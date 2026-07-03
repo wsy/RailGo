@@ -144,7 +144,8 @@ import { uniGet } from "@/scripts/req.js";
 				this.currentAppVersionText = uni.getStorageSync("versionText") || "未知版本";
 
 				try {
-					const finalInfoResponse = await uniGet("https://api.state.railgo.zenglingkun.cn/api/v1/info");
+					const infoBase = uni.getStorageSync('service_source_update_db') || 'https://gateway.zenglingkun.cn';
+					const finalInfoResponse = await uniGet(infoBase + "/api/v2/info");
 					
 					if (finalInfoResponse.status === 200 && finalInfoResponse.data) {
 						const data = finalInfoResponse.data;
@@ -191,7 +192,8 @@ import { uniGet } from "@/scripts/req.js";
 				
 				uni.showLoading({ title: '正在获取下载地址...', mask: true });
 				try {
-					const res = await uniGet("https://api.state.railgo.zenglingkun.cn/api/v1/url/pack/android");
+					const packBase = uni.getStorageSync('service_source_update_pack') || 'https://gateway.zenglingkun.cn';
+					const res = await uniGet(packBase + "/api/v2/url/pack/android");
 					uni.hideLoading();
 					if (res.data && res.data.url) {
 						plus.runtime.openURL(res.data.url);
