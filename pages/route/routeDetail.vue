@@ -259,7 +259,6 @@ export default {
 			selectIndex: 0,
 			carMap: CAR_PERFORMANCE,
 			carImageUrl: "", 
-			defaultImageUrl: "",
 			imageUploaderUsername: "暂缺图片",
 			isImageLoading: true,
 			"colorMap": TRAIN_KIND_COLOR_MAP,
@@ -305,10 +304,8 @@ export default {
 			
 			// 初始化图片
 			const carModel = this.routeData.car ? this.routeData.car.replace(' 重联', '') : null;
-			const tpBase = uni.getStorageSync('service_source_tp') || 'https://tp.railgo.zenglingkun.cn';
 			if (carModel) {
-				this.carImageUrl = tpBase + `/api/${encodeURIComponent(carModel)}.png`;
-				// 尝试获取图片信息
+				this.carImageUrl = '';
 				this.fetchImageSource();
 			} else {
 				this.carImageUrl = '';
@@ -325,57 +322,30 @@ export default {
 			this.selectIndex = e.index;
 		},
 		onImageError: function(e) {
-			const carModel = this.routeData.car ? this.routeData.car.replace(' 重联', '') : null;
-		    
-			// 如果当前加载的是 JSON 里的图片且失败了，尝试切换到默认 PNG 接口
-			if (this.carImageUrl !== this.defaultImageUrl && this.defaultImageUrl) {
-				this.carImageUrl = this.defaultImageUrl;
-				return;
-			}
-		
-			// 如果默认 PNG 也失败了，尝试使用本地 config.js 里的兜底图
-			if (carModel && this.carMap[carModel] && this.carMap[carModel][4]) {
-				this.carImageUrl = this.carMap[carModel][4];
-			} else {
-				this.carImageUrl = '';
-			}
-			console.error("All image sources failed.");
+			this.carImageUrl = '';
+			console.error("Image load failed, hiding image container.");
 		},
 		async fetchImageSource() {
 			const carModel = this.routeData.car ? this.routeData.car.replace(' 重联', '') : null;
 			if (!carModel) {
+				this.carImageUrl = '';
 				this.isImageLoading = false;
 				return;
 			}
-		
-			const tpBase = uni.getStorageSync('service_source_tp') || 'https://tp.railgo.zenglingkun.cn';
-			// 设置默认的备用地址（原有的 .png 接口）
-			this.defaultImageUrl = tpBase + `/api/${encodeURIComponent(carModel)}.png`;
-		
+
 			try {
+				const tpBase = uni.getStorageSync('service_source_tp') || 'https://tp.railgo.zenglingkun.cn';
 				const url = tpBase + `/api/${encodeURIComponent(carModel)}.json`;
 				const resp = await uniGet(url);
-		
-				if (resp.data && resp.data.success && resp.data.data) {
-					// 优先使用 JSON 中的 image_url
-					if (resp.data.data.image_url) {
-						this.carImageUrl = resp.data.data.image_url;
-					} else {
-						// 如果 JSON 成功但没返回 image_url，走默认 PNG
-						this.carImageUrl = this.defaultImageUrl;
-					}
-					// 更新上传者信息
-					this.imageUploaderUsername = resp.data.data.uploader_username || '未知';
+
+				if (resp.data && resp.data.success && resp.data.data && resp.data.data.image_url) {
+					this.carImageUrl = resp.data.data.image_url;
+					this.imageUploaderUsername = resp.data.data.uploader_username || '匿名';
 				} else {
-					// JSON 接口返回 success: false
-					this.carImageUrl = this.defaultImageUrl;
-					this.imageUploaderUsername = '暂缺图片';
+					this.carImageUrl = '';
 				}
 			} catch (e) {
-				// 网络请求失败（如 404），走默认 PNG
-				console.warn("JSON metadata not found, using default png.");
-				this.carImageUrl = this.defaultImageUrl;
-				this.imageUploaderUsername = '暂缺图片';
+				this.carImageUrl = '';
 			} finally {
 				this.isImageLoading = false;
 			}
