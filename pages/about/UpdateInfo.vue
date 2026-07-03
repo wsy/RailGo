@@ -58,6 +58,7 @@
 							"Feature: 允许选择服务源",
 							"Feature: 新版本欢迎",
 							"Feature: 新的应用图标",
+							"Feature: Banner图跳转",
 							"Fixed: 行程功能",
 							"Fixed: 时刻表显示不完整",
 							"Removed: 仅离线模式",
