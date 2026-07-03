@@ -1,5 +1,24 @@
 <template>
 	<view class="ux-bg-primary" style="height:  var(--status-bar-height);">&nbsp;</view>
+
+	<!-- 版本更新欢迎弹窗 -->
+	<view v-if="showUpdatePopup" class="update-popup-overlay" @click="closeUpdatePopup">
+		<view class="update-popup-card" @click.stop>
+			<view class="update-popup-header">
+				<text class="update-popup-title">欢迎来到 RailGo 新版本</text>
+			</view>
+			<view class="update-popup-version" v-if="updateVersion">
+				<text class="ux-text-small">Version {{ updateVersion }}</text>
+			</view>
+			<view class="update-popup-body">
+				<text class="ux-text-small ux-color-grey2">我们带来了新的功能和改进，快来看看吧！</text>
+			</view>
+			<text class="ux-text-small ux-color-grey3">点击阴影区域可关闭此窗口</text>
+			
+			<button class="update-popup-btn" @click="goUpdateLog">查看更新日志</button>
+		</view>
+	</view>
+
 	<view class="ux-padding ux-bg-grey5" style="min-height: 100vh;">
 		<view class="ux-flex ux-space-between ux-align-items-center">
 			<view>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</view>
@@ -130,7 +149,9 @@
 				items: ['暂无公告'],
 				currentIndex: 0,
 				bannerImages: [],
-				swiperHeight: '210rpx'
+				swiperHeight: '210rpx',
+				showUpdatePopup: false,
+				updateVersion: ''
 			};
 		},
 		computed: {
@@ -152,7 +173,28 @@
 		mounted() {
 			this.fetchRemoteData();
 		},
+		onShow() {
+			this.checkUpdatePopup();
+		},
 		methods: {
+			checkUpdatePopup() {
+				const popupData = uni.getStorageSync('showCustomUpdatePopup');
+				if (popupData && popupData.show) {
+					this.updateVersion = popupData.version || '';
+					this.showUpdatePopup = true;
+					// 消费标记，防止重复弹出
+					uni.setStorageSync('showCustomUpdatePopup', { show: false });
+				}
+			},
+			closeUpdatePopup() {
+				this.showUpdatePopup = false;
+			},
+			goUpdateLog() {
+				this.showUpdatePopup = false;
+				uni.navigateTo({
+					url: '/pages/about/UpdateInfo'
+				});
+			},
 			formatNoticeContent(content) {
 				if (!content) return '';
 				return content.replace(/^\[AD\]|^\[PSAD\]|^\[WAR\]/, '');
@@ -198,6 +240,65 @@
 <style lang="scss">
 	.ux-color-red { color: #B71C1C !important; }
 	.section-icon { font-size: 50rpx; }
+
+	/* 版本更新弹窗 */
+	.update-popup-overlay {
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		background: rgba(0, 0, 0, 0.5);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		z-index: 9999;
+	}
+	.update-popup-card {
+		width: 580rpx;
+		background: #ffffff;
+		border-radius: 24rpx;
+		padding: 50rpx 40rpx 40rpx;
+		text-align: center;
+		box-shadow: 0 8rpx 40rpx rgba(0, 0, 0, 0.15);
+	}
+	.update-popup-header {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 16rpx;
+	}
+	.update-popup-icon {
+		font-size: 80rpx;
+		color: #114598;
+	}
+	.update-popup-title {
+		font-size: 34rpx;
+		font-weight: 600;
+		color: #114598;
+	}
+	.update-popup-version {
+		margin-top: 12rpx;
+	}
+	.update-popup-body {
+		margin-top: 24rpx;
+		line-height: 1.6;
+	}
+	.update-popup-btn {
+		margin-top: 40rpx;
+		width: 100%;
+		height: 88rpx;
+		line-height: 88rpx;
+		background: #114598;
+		color: #ffffff;
+		font-size: 30rpx;
+		border-radius: 12rpx;
+		border: none;
+		padding: 0;
+	}
+	.update-popup-btn::after {
+		border: none;
+	}
 
 	.notice {
 		width: 100%;

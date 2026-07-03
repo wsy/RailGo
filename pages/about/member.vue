@@ -53,12 +53,12 @@
 			</uni-table>
 		</view>
 
-		<view class="ux-pl ux-pr ux-pb">
+<!-- 		<view class="ux-pl ux-pr ux-pb">
 			<uni-section title="其他" type="line" title-font-size="35rpx" class="no-bg-section"></uni-section>
 			<view class="ux-text-center ux-padding-sm">
 				<text class="ux-text-grey7" style="font-size: 24rpx;">慈云数据 (zovps.com) 提供云计算支持</text>
 			</view>
-		</view>
+		</view> -->
 
 		<view class="ux-pl ux-pr ux-pb" v-if="zz.length > 0">
 			<uni-section title="赞助" type="line" title-font-size="35rpx" class="no-bg-section"></uni-section>
@@ -105,7 +105,8 @@
 					{ name: '辰墨', avatar: 'https://q1.qlogo.cn/g?b=qq&s=100&nk=1316280182' },
 					{ name: 'TKP30', avatar: 'https://q1.qlogo.cn/g?b=qq&s=100&nk=572747232' },
 					{ name: '姜胤', avatar: 'https://q1.qlogo.cn/g?b=qq&s=100&nk=1219439938' },
-					{ name: 'mstouk57g', avatar: 'https://q1.qlogo.cn/g?b=qq&s=100&nk=3776473661' }
+					{ name: 'mstouk57g', avatar: 'https://q1.qlogo.cn/g?b=qq&s=100&nk=3776473661' },
+					{ name: '心不负相思', avatar: 'https://q1.qlogo.cn/g?b=qq&s=100&nk=1808717406' }
 				],
 				specialThanks: [
 					{ name: 'XieXiLin', avatar: 'https://q1.qlogo.cn/g?b=qq&s=100&nk=3068342155' },
@@ -117,8 +118,7 @@
 				],
 				zz: [],
 				dataSources: [
-					{ source: 'RailGo.Parser', website: 'railgo.dev', function: '车次、车站、正晚点、动车组担当' },
-					{ source: '车站小屏', website: '12036.com', function: '车站大屏' },
+					{ source: 'RailGo.Parser', website: 'railgo.dev', function: '车次、车站、正晚点、动车组担当、大屏' },
 					{ source: 'OpenCRHTracker', website: 'crh.lihugang.top', function: '担当、配属' }
 				]
 			};

@@ -51,6 +51,20 @@
 				nowIcon: uni.getStorageSync("nowIcon") || 'crh',
 				updateLogs: [
 					{
+						version: "v2.0.1 (20001)",
+						date: "2026-07-03",
+						items: [
+							"Changed: 切换基础网关版本",
+							"Feature: 允许选择服务源",
+							"Feature: 新版本欢迎",
+							"Feature: 新的应用图标",
+							"Fixed: 行程功能",
+							"Fixed: 时刻表显示不完整",
+							"Removed: 仅离线模式",
+							"更新预告：列车图集，部分列车运行路径"
+						]
+					},
+					{
 						version: "v2.0.0 (20000)",
 						date: "2026-06-29",
 						items: [

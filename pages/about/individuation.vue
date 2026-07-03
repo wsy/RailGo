@@ -74,6 +74,15 @@
 						{{ nowIcon === 'girl' ? '已使用' : ((girlUnlock || railgoGirlUnlock) ? '使用' : '未解锁') }}
 					</button>
 				</view>
+
+				<view class="icon-item">
+					<image mode="scaleToFill" src="/static/icons/rg-1st.png"
+						:class="{'grayscale': !firstAnniversaryUnlock}" @click="showIconHelp('周年庆', 'firstAnniversaryUnlock')"></image>
+					<text class="icon-text">周年庆</text>
+					<button class="ux-btn" :disabled="!firstAnniversaryUnlock || nowIcon === '1st'" @click="selectIcon('1st')">
+						{{ nowIcon === '1st' ? '已使用' : (firstAnniversaryUnlock ? '使用' : '未解锁') }}
+					</button>
+				</view>
 			</view>
 		</view>
 		
@@ -116,12 +125,14 @@ import {uniGet} from "@/scripts/req.js";
 				eggUnlock: false, 
 				searchUnlock1: false, 
 				searchUnlock2: false, 
+				searchUnlock3: false, 
 				girlUnlock: false, 
 
 				greenUnlock: uni.getStorageSync("greenUnlock") || false, // 立及甬
 				purpleUnlock: uni.getStorageSync("purpleUnlock") || false, // 大茄子
 				passionUnlock: uni.getStorageSync("passionUnlock") || false, // 百香果
 				railgoGirlUnlock: uni.getStorageSync("railgoGirlUnlock") || false, // 露星
+				firstAnniversaryUnlock: uni.getStorageSync("firstAnniversaryUnlock") || false, // 周年庆
 				
 				dfh: uni.getStorageSync("dfh"), 
 				tys: uni.getStorageSync("tys"), 
@@ -135,7 +146,8 @@ import {uniGet} from "@/scripts/req.js";
 					{ name: '立及甬', iconKey: 'green', storageKey: 'greenUnlock' },
 					{ name: '大茄子', iconKey: 'purple', storageKey: 'purpleUnlock' },
 					{ name: '百香果', iconKey: 'passion', storageKey: 'passionUnlock' },
-					{ name: '露星', iconKey: 'girl', storageKey: 'railgoGirlUnlock' }
+					{ name: '露星', iconKey: 'girl', storageKey: 'railgoGirlUnlock' },
+					{ name: '周年庆', iconKey: '1st', storageKey: 'firstAnniversaryUnlock' }
 				],
 				apiUrl: '',
 			};
@@ -196,6 +208,9 @@ import {uniGet} from "@/scripts/req.js";
 						content = '百香果在查询1000次后可解锁，或通过兑换码兑换。';
 						break;
 					case '露星':
+						content = '该图标仅通过特殊活动或兑换码兑换解锁。';
+						break;
+					case '周年庆':
 						content = '该图标仅通过特殊活动或兑换码兑换解锁。';
 						break;
 					default:
