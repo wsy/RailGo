@@ -21,7 +21,6 @@
 					<text class="ux-text-small" style="color: #114598; text-decoration: underline;" @click="fetchServiceEndpoints">点击重试</text>
 				</view>
 			</view>
-
 			<!-- 服务卡片列表 -->
 			<view v-for="(service, index) in serviceList" :key="service.code" class="ux-bg-white ux-border-radius-large ux-padding ux-mt-small">
 				<view class="ux-flex ux-space-between ux-align-items-center">
@@ -57,11 +56,14 @@
 			</view>
 
 			<!-- 底部留空给按钮 -->
-			<view style="height: 160rpx;"></view>
+			<view style="height: 220rpx;"></view>
 		</view>
 
-		<!-- 下一步按钮 -->
-		<view class="ux-flex ux-justify-content-end" style="position: fixed; right: 40rpx; bottom: 60rpx;">
+		<!-- 浮动按钮组 -->
+		<view class="ux-flex" style="flex-direction: column; align-items: flex-end; position: fixed; right: 40rpx; bottom: 60rpx;">
+			<button class="primary-button" style="margin-bottom: 20rpx;" @click="randomSelectAll">
+				<text class="icon">&#xe0b8;</text>
+			</button>
 			<button class="primary-button" @click="goNext">
 				<text class="icon">&#xe5c8;</text>
 			</button>
@@ -169,6 +171,19 @@
 					title: '已保存',
 					icon: 'success',
 					duration: 1000
+				});
+			},
+			randomSelectAll() {
+				for (const service of this.serviceList) {
+					if (service.endpoints.length > 0) {
+						service.selectedIndex = 0;
+						const selectedUrl = service.endpointUrls[0];
+						uni.setStorageSync('service_source_' + service.code, selectedUrl);
+					}
+				}
+				uni.showToast({
+					title: '已全部选择首个服务源',
+					position:"bottom"
 				});
 			},
 			goNext() {

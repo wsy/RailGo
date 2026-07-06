@@ -233,7 +233,7 @@
 				}
 				if (hasEmptySource) {
 					uni.reLaunch({
-						url: '/pages/about/source'
+						url: '/pages/oobe/source'
 					});
 					return;
 				}

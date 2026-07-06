@@ -103,7 +103,7 @@
 				</navigator>
 			</view><br>
 			<view class="ux-flex ux-rows ux-wrap ux-space-between">
-				<navigator class="ux-th ux-bg-white ux-border-radius-large ux-padding"
+				<navigator class="ux-th ux-bg-white ux-border-radius-large ux-padding ux-mr-small"
 					style="flex:auto;width:1rpx;" hover-class="ux-tap" url="/pages/emu/query">
 					<text class="icon section-icon ux-color-orange1">&#xe570;</text>
 					<br>
@@ -115,18 +115,18 @@
 						<text class="icon">&#xe5c8;</text>
 					</view>
 				</navigator>
-				<!-- <navigator class="ux-th ux-bg-white ux-border-radius-large ux-padding ux-ml-small"
-					style="flex:auto;width:1rpx;" hover-class="ux-tap" url="/pages/simulate/trainScreen">
-					<text class="icon section-icon ux-color-purple1">&#xe0e2;</text>
+				<navigator class="ux-th ux-bg-white ux-border-radius-large ux-padding ux-ml-small"
+					style="flex:auto;width:1rpx;" hover-class="ux-tap" url="/pages/gallery/query">
+					<text class="icon section-icon ux-color-green6">&#xe3b3;</text>
 					<br>
-					<text class="ux-text">屏幕模拟</text>
+					<text class="ux-text">列车图鉴</text>
 					<br>
-					<text class="ux-text-small ux-opacity-8">模拟智能动车组上的滚动屏幕。</text>
+					<text class="ux-text-small ux-opacity-8">看见火车迷们拍摄的列车图片。</text>
 					<br><br>
 					<view class="ux-text-right ux-mr-small">
 						<text class="icon">&#xe5c8;</text>
 					</view>
-				</navigator> -->
+				</navigator>
 			</view>
 		</view>
 		<br>
@@ -145,11 +145,14 @@
 
 	export default {
 		data() {
+			// 初始高度按横幅常见比例（约 2.86:1）计算，防止图片未加载时显示不全
+			const sysInfo = uni.getSystemInfoSync();
+			const initH = Math.round((sysInfo.windowWidth || 375) * 0.35);
 			return {
 				items: ['暂无公告'],
 				currentIndex: 0,
 				bannerImages: [],
-				swiperHeight: '210rpx',
+				swiperHeight: initH + 'px',
 				showUpdatePopup: false,
 				updateVersion: ''
 			};

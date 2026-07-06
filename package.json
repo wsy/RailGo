@@ -20,6 +20,7 @@
     "dependencies": {
         "@vue/reactivity": "^3.5.39",
         "axios": "^1.10.0",
+        "ol": "^10.9.0",
         "uniapp-axios-adapter": "^0.3.2",
         "vue": "^3.5.17"
     }

@@ -79,7 +79,7 @@
 			</intent-filter>
 		</activity-alias>
 		<activity-alias
-			android:name="1st"
+			android:name="first"
 			android:enabled="false"
 			android:exported="true"
 			android:icon="@mipmap/rg_1st"

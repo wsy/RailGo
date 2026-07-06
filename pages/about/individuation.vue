@@ -76,11 +76,11 @@
 				</view>
 
 				<view class="icon-item">
-					<image mode="scaleToFill" src="/static/icons/rg-1st.png"
+					<image mode="scaleToFill" src="/static/icons/rg-first.png"
 						:class="{'grayscale': !firstAnniversaryUnlock}" @click="showIconHelp('周年庆', 'firstAnniversaryUnlock')"></image>
 					<text class="icon-text">周年庆</text>
-					<button class="ux-btn" :disabled="!firstAnniversaryUnlock || nowIcon === '1st'" @click="selectIcon('1st')">
-						{{ nowIcon === '1st' ? '已使用' : (firstAnniversaryUnlock ? '使用' : '未解锁') }}
+					<button class="ux-btn" :disabled="!firstAnniversaryUnlock || nowIcon === 'first'" @click="selectIcon('first')">
+						{{ nowIcon === 'first' ? '已使用' : (firstAnniversaryUnlock ? '使用' : '未解锁') }}
 					</button>
 				</view>
 			</view>
@@ -147,7 +147,7 @@ import {uniGet} from "@/scripts/req.js";
 					{ name: '大茄子', iconKey: 'purple', storageKey: 'purpleUnlock' },
 					{ name: '百香果', iconKey: 'passion', storageKey: 'passionUnlock' },
 					{ name: '露星', iconKey: 'girl', storageKey: 'railgoGirlUnlock' },
-					{ name: '周年庆', iconKey: '1st', storageKey: 'firstAnniversaryUnlock' }
+					{ name: '周年庆', iconKey: 'first', storageKey: 'firstAnniversaryUnlock' }
 				],
 				apiUrl: '',
 			};

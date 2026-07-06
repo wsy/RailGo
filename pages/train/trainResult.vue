@@ -352,8 +352,30 @@
 
 			</view>
 
-			<view class="ux-padding ux-text-center" v-if="selectIndex==2">
-				<text>暂未开放，敬请期待</text>
+			<view v-if="selectIndex==2">
+				<view style="position:relative; margin-top: 10rpx;">
+					<z-map
+						ref="zMapRef"
+						:mapHeight="mapHeightPx"
+						@ready="onMapReady"
+						@click-point="onMapClickPoint"
+					></z-map>
+					<!-- 图例 -->
+					<view style="position:absolute;bottom:20rpx;right:20rpx;background:rgba(255,255,255,0.92);border-radius:8rpx;padding:12rpx 20rpx;z-index:10;display:flex;flex-direction:column;gap:6rpx;">
+						<view style="display:flex;align-items:center;gap:10rpx;">
+							<view style="width:16rpx;height:16rpx;border-radius:50%;background:#114598;border:2rpx solid #fff;"></view>
+							<text style="font-size:22rpx;color:#333;">站点</text>
+						</view>
+						<view style="display:flex;align-items:center;gap:10rpx;">
+							<view style="width:12rpx;height:12rpx;border-radius:50%;background:#d70f19;border:2rpx solid #fff;"></view>
+							<text style="font-size:22rpx;color:#333;">路径点</text>
+						</view>
+						<view style="display:flex;align-items:center;gap:10rpx;">
+							<view style="width:18rpx;height:18rpx;border-radius:50%;background:#10b981;border:2rpx solid #fff;"></view>
+							<text style="font-size:22rpx;color:#333;">列车实时位置</text>
+						</view>
+					</view>
+				</view>
 			</view>
 
 			<br>
@@ -438,10 +460,14 @@
 		uniGet,
 		uniPost
 	} from "@/scripts/req";
+	import ZMap from '@/uni_modules/z-map/components/z-map/z-map.vue';
+	import { gcj02ToWgs84 } from "@/scripts/coord_transform";
+	import { getTrainPosition } from "@/scripts/trainPosition";
 
 	export default {
 		components: {
-			calendar
+			calendar,
+			ZMap
 		},
 		data() {
 			return {
@@ -487,7 +513,16 @@
 				"showPlatformModal": false, 
 				"selectedStationIndex": -1, 
 				// 日期判断：是否是今天的日期
-				"isTodayDate": true, 
+				"isTodayDate": true,
+				// 地图路径数据
+				"mapStations": [],
+				"mapLines": [],
+				"mapReady": false,
+				"mapDataReady": false,
+				"mapHeightPx": "600px",
+				"mapPointData": [],		// 存储绘制的站点+端点，用于实时刷新列车位置
+				"trainPositionTimer": null, // 实时位置更新定时器
+				"currentTrainPos": null,	// 当前列车实时位置 { lng, lat, status, currentStation }
 			}
 		},
 		computed: {
@@ -563,6 +598,11 @@
 			const mode = uni.getStorageSync("mode");
 			this.isOnlyOfflineMode = uni.getStorageSync("ol") === true;
 
+			// 计算地图高度：全屏剩余空间
+			this.$nextTick(() => {
+				this.calcMapHeight();
+			});
+
 			const c = uni.getStorageSync("search");
 			uni.setStorage({
 				key: 'search',
@@ -575,7 +615,24 @@
 			plus.navigator.setStatusBarBackground('#114598');
 			// #endif
 		},
+		onUnload() {
+			this.stopTrainTracking();
+		},
 		methods: {
+			/**
+			 * 计算地图高度，占满屏幕剩余空间
+			 */
+			calcMapHeight() {
+				const sysInfo = uni.getSystemInfoSync();
+				// 使用系统信息估算顶部元素总高度（px）
+				// 状态栏 + 返回按钮区域(60rpx) + 车次卡片(220rpx) + 提示(60rpx) + tabs(90rpx) + 间距
+				const ratio = sysInfo.windowWidth / 750;
+				const statusBarPx = sysInfo.statusBarHeight || 44;
+				const headerRpx = 60 + 220 + 60 + 90 + 30;
+				const offsetPx = statusBarPx + headerRpx * ratio;
+				const availableHeight = sysInfo.windowHeight - offsetPx;
+				this.mapHeightPx = Math.max(availableHeight, 400) + 'px';
+			},
 			back: function() {
 				uni.navigateBack()
 			},
@@ -788,6 +845,66 @@
 				const formattedMinutes = String(finalMin).padStart(2, '0');
 
 				return `${formattedHours}:${formattedMinutes}`;
+			},
+
+			/**
+			 * 根据正晚点数据计算实际时间字符串（不约束在 0-24h，允许 "25:30" 跨日）
+			 * @param {string} estimatedTime - 预计时间 "HH:mm"
+			 * @param {string} delayStatus - 正晚点状态码
+			 * @param {number} delayTime - 延迟分钟数
+			 * @returns {string} 实际时间 "HH:mm"（小时可能 > 23）
+			 */
+			getAdjustedTimeStr(estimatedTime, delayStatus, delayTime) {
+				if (!estimatedTime || estimatedTime === '-' || !delayStatus || typeof delayTime !== 'number') {
+					return estimatedTime;
+				}
+				if (delayStatus === 'ON_TIME' || delayTime === 0) {
+					return estimatedTime;
+				}
+
+				const parts = estimatedTime.split(':');
+				let hours = parseInt(parts[0]);
+				let minutes = parseInt(parts[1]);
+
+				let adjustedDelay = delayTime;
+				if (delayStatus === 'EARLY' || delayStatus === 'EARLY_PREDICTION') {
+					adjustedDelay = -Math.abs(delayTime);
+				} else if (delayStatus === 'DELAY' || delayStatus === 'DELAY_PREDICTION') {
+					adjustedDelay = Math.abs(delayTime);
+				} else {
+					return estimatedTime;
+				}
+
+				let totalMinutes = hours * 60 + minutes + adjustedDelay;
+				if (totalMinutes < 0) totalMinutes = 0;
+
+				const finalHours = Math.floor(totalMinutes / 60);
+				const finalMin = totalMinutes % 60;
+				return `${String(finalHours).padStart(2, '0')}:${String(finalMin).padStart(2, '0')}`;
+			},
+
+			/**
+			 * 基于正晚点数据构建修正时刻表，用实际时间替换预计时间
+			 * @returns {Array|null} 修正后的时刻表，无正晚点数据返回 null
+			 */
+			buildActualTimetable() {
+				if (!this.delay || this.delay.length === 0 || !this.carData.timetable) return null;
+
+				// 建立正晚点数据索引：stationName → delayItem
+				const delayMap = new Map();
+				(this.combinedDelayData || []).forEach(item => {
+					delayMap.set(item.stationName, item);
+				});
+
+				return this.carData.timetable.map(s => {
+					const delay = delayMap.get(s.station);
+					if (delay && delay.delayStatusCode) {
+						const adjArrive = this.getAdjustedTimeStr(s.arrive, delay.delayStatusCode, delay.delayTime);
+						const adjDepart = this.getAdjustedTimeStr(s.depart, delay.delayStatusCode, delay.delayTime);
+						return { ...s, arrive: adjArrive, depart: adjDepart };
+					}
+					return s;
+				});
 			},
 
 			/**
@@ -1053,6 +1170,9 @@
 						this.cardColor = this.colorMap[this.carData.numberKind] || '#114598';
 						loadSuccess = true; 
 
+						// 异步获取运行线路点
+						this.fetchMapLine();
+
 					} else {
 						// --- 本地模式逻辑：获取车次详情 ---
 						const result = await doQuery("SELECT * FROM trains WHERE number='" + this.keyword +
@@ -1297,6 +1417,257 @@
 			hidePlatformDetails: function() {
 				this.showPlatformModal = false;
 				this.selectedStationIndex = -1;
+			},
+			/**
+			 * 获取列车运行线路点
+			 */
+			async fetchMapLine() {
+				try {
+					const mapLineBase = uni.getStorageSync('service_source_mapLine') || 'https://rg-api.zenglingkun.cn';
+					const resp = await uniGet(mapLineBase + '/api/v2/mapLine', {
+						params: { train: this.train }
+					});
+					if (resp && resp.data && resp.data.data) {
+						// GCJ-02 → WGS-84 坐标转换
+						const raw = resp.data.data;
+						// 转换站点坐标
+						const stations = (raw.stations || []).map(s => {
+							const entries = Object.entries(s);
+							const name = entries[0][0];
+							const coords = entries[0][1];
+							const wgs = gcj02ToWgs84(parseFloat(coords[0]), parseFloat(coords[1]));
+							return { [name]: [wgs.lng, wgs.lat] };
+						});
+						// 转换线路坐标
+						const lines = {};
+						if (raw.train) {
+							Object.keys(raw.train).forEach(key => {
+								const seg = raw.train[key];
+								lines[key] = {
+									index: seg.index,
+									line: seg.line.map(pt => {
+										const wgs = gcj02ToWgs84(parseFloat(pt[0]), parseFloat(pt[1]));
+										return [wgs.lng, wgs.lat];
+									})
+								};
+							});
+						}
+						this.mapStations = stations;
+						this.mapLines = lines;
+						this.mapDataReady = true;
+						this.drawRouteOnMap();
+					}
+				} catch (e) {
+					console.warn('获取运行线路点失败', e);
+				}
+			},
+			/**
+			 * 在地图上绘制线路和站点
+			 */
+			drawRouteOnMap() {
+				if (!this.mapReady || !this.mapDataReady || !this.$refs.zMapRef) return;
+
+				// 清除旧图层（通过移除旧元素重新绘制）
+				this.$refs.zMapRef.mapDrawLinePath('remove');
+				this.$refs.zMapRef.mapDrawCircle('remove');
+
+				// 1. 绘制各区间线路
+				const segments = Object.values(this.mapLines).sort((a, b) => a.index - b.index);
+				const allCoords = [];
+				segments.forEach(seg => {
+					if (seg.line && seg.line.length > 0) {
+						seg.line.forEach(pt => allCoords.push(pt));
+					}
+				});
+
+				if (allCoords.length > 0) {
+					this.$refs.zMapRef.mapDrawLinePath({
+						path: allCoords,
+						style: { stroke: '#114598', width: 4 },
+						distanceUnit: 'km'
+					});
+				}
+
+				// 2. 收集所有站点名称（去重）
+				const stationMap = {};
+				this.mapStations.forEach(s => {
+					const entries = Object.entries(s);
+					const name = entries[0][0];
+					const coords = entries[0][1];
+					stationMap[name] = { lng: coords[0], lat: coords[1], name };
+				});
+
+				// 3. 收集路径段端点（排除已存在的站点）
+				const endpointMap = {};
+				Object.keys(this.mapLines).forEach(key => {
+					const parts = key.split('-');
+					if (parts.length >= 2) {
+						const seg = this.mapLines[key];
+						if (seg.line && seg.line.length > 0) {
+							const start = seg.line[0];
+							const end = seg.line[seg.line.length - 1];
+							[parts[0], parts[1]].forEach((name, idx) => {
+								const pt = idx === 0 ? start : end;
+								if (pt && !stationMap[name]) {
+									endpointMap[name] = { lng: pt[0], lat: pt[1], name };
+								}
+							});
+						}
+					}
+				});
+
+				// 4. 合并站点和路径端点，一次绘制（避免 renderjs 清空问题）
+				const allPoints = [];
+				Object.values(stationMap).forEach(p => {
+					allPoints.push({ ...p, fill: '#114598', radius: 10, stroke: '#fff' });
+				});
+				Object.values(endpointMap).forEach(p => {
+					allPoints.push({ ...p, fill: '#d70f19', radius: 8, stroke: '#fff' });
+				});
+
+				if (allPoints.length > 0) {
+					this.$refs.zMapRef.mapDrawCircle({
+						style: { showLabel: true, zIndex: 10 },
+						list: allPoints
+					});
+				}
+
+				// 保存点位数据用于实时位置更新
+				this.mapPointData = allPoints;
+
+				// 启动实时位置追踪
+				this.$nextTick(() => this.startTrainTracking());
+
+				// 5. 缩放至路线范围
+				if (allCoords.length > 0) {
+					// 取路线中心点，设合适的缩放级别展示全貌
+					const lngs = allCoords.map(c => c[0]);
+					const lats = allCoords.map(c => c[1]);
+					const centerLng = (Math.min(...lngs) + Math.max(...lngs)) / 2;
+					const centerLat = (Math.min(...lats) + Math.max(...lats)) / 2;
+					// 根据路线跨度估算缩放级别
+					const lngSpan = Math.max(...lngs) - Math.min(...lngs);
+					const latSpan = Math.max(...lats) - Math.min(...lats);
+					const maxSpan = Math.max(lngSpan, latSpan);
+					let zoom = 6;
+					if (maxSpan > 10) zoom = 5;
+					else if (maxSpan > 5) zoom = 6;
+					else if (maxSpan > 2) zoom = 7;
+					else if (maxSpan > 1) zoom = 8;
+					else zoom = 9;
+					this.$refs.zMapRef.mapChangeCenter({ lng: centerLng, lat: centerLat, zoom });
+				}
+
+			},
+			onMapClickPoint(point) {
+				if (point && point.name) {
+					uni.showToast({ title: point.name, icon: 'none', duration: 2000 });
+				}
+			},
+			/**
+			 * 启动实时位置追踪（每10秒更新一次，非今天日期或当日不开行不追踪）
+			 */
+			startTrainTracking() {
+				this.stopTrainTracking();
+				if (!this.isTodayDate) return;
+				// 当日不开行也不追踪
+				if (this.carData.rundays && !this.carData.rundays.includes(this.date)) return;
+				// 立即更新一次
+				this.updateTrainPosition();
+				// 每10秒刷新
+				this.trainPositionTimer = setInterval(() => {
+					this.updateTrainPosition();
+				}, 10000);
+			},
+			/**
+			 * 停止实时位置追踪
+			 */
+			stopTrainTracking() {
+				if (this.trainPositionTimer) {
+					clearInterval(this.trainPositionTimer);
+					this.trainPositionTimer = null;
+				}
+			},
+			/**
+			 * 更新列车实时位置标记
+			 */
+			updateTrainPosition() {
+				if (!this.mapDataReady || !this.mapReady || !this.$refs.zMapRef) return;
+				// 非今天日期或当日不开行不计算实时位置
+				if (!this.isTodayDate) return;
+				if (this.carData.rundays && !this.carData.rundays.includes(this.date)) return;
+				// 有正晚点数据时，用实际时间构建修正时刻表
+				const timetable = (this.delay && this.delay.length > 0)
+					? (this.buildActualTimetable() || this.carData.timetable)
+					: this.carData.timetable;
+				if (!timetable || timetable.length < 2) return;
+
+				const pos = getTrainPosition(timetable, this.mapLines, this.mapStations);
+				if (!pos || !pos.lng || !pos.lat) return;
+
+				this.currentTrainPos = pos;
+
+				// 构建实时位置圆点
+				let fillColor = '#10b981'; // 运行中绿色
+				let label = '运行中';
+				if (pos.status === 'stopped') {
+					fillColor = '#f59e0b'; // 停站橙色
+					label = '停站·' + (pos.currentStation || '');
+				} else if (pos.status === 'not_departed') {
+					fillColor = '#94a3b8'; // 未出发灰色
+					label = '未出发';
+				} else if (pos.status === 'arrived') {
+					fillColor = '#64748b'; // 已到达灰色
+					label = '已到达';
+				}
+
+				const trainPoint = {
+					lng: pos.lng,
+					lat: pos.lat,
+					name: this.train + ' ' + label,
+					fill: fillColor,
+					radius: 14,
+					stroke: '#fff',
+					strokeWidth: 3,
+				};
+
+				// 合并已有站点/端点 + 列车位置，一次重绘
+				const allPoints = [...(this.mapPointData || [])];
+				// 替换已有的列车点或追加
+				const existingIdx = allPoints.findIndex(p => p._isTrain);
+				if (existingIdx >= 0) {
+					allPoints[existingIdx] = { ...trainPoint, _isTrain: true };
+				} else {
+					allPoints.push({ ...trainPoint, _isTrain: true });
+				}
+
+				this.$refs.zMapRef.mapDrawCircle({
+					style: { showLabel: true, zIndex: 10 },
+					list: allPoints
+				});
+			},
+			/**
+			 * 地图组件就绪，初始化地图
+			 */
+			onMapReady() {
+				this.mapReady = true;
+				if (this.$refs.zMapRef) {
+					this.$refs.zMapRef.mapInit({
+						sourceParams: {
+							vec: 'http://t0.tianditu.gov.cn/vec_w/wmts?service=wmts&request=GetTile&version=1.0.0&LAYER=vec&tileMatrixSet=w&TileMatrix={z}&TileRow={y}&TileCol={x}&style=default&format=tiles&tk=416cfaff76398b8567f8b7e48a933651',
+							cva: 'http://t0.tianditu.gov.cn/cva_w/wmts?service=wmts&request=GetTile&version=1.0.0&LAYER=cva&tileMatrixSet=w&TileMatrix={z}&TileRow={y}&TileCol={x}&style=default&format=tiles&tk=416cfaff76398b8567f8b7e48a933651'
+						},
+						mapOptions: {
+							center: [118.050, 24.621],
+							zoom: 6
+						},
+						controlOptions: {
+							zoom: false
+						}
+					});
+					// 给地图留时间初始化后再绘制
+					setTimeout(() => this.drawRouteOnMap(), 500);
+				}
 			}
 		}
 	}
