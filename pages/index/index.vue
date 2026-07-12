@@ -145,14 +145,11 @@
 
 	export default {
 		data() {
-			// 初始高度按横幅常见比例（约 2.86:1）计算，防止图片未加载时显示不全
-			const sysInfo = uni.getSystemInfoSync();
-			const initH = Math.round((sysInfo.windowWidth || 375) * 0.35);
 			return {
 				items: ['暂无公告'],
 				currentIndex: 0,
 				bannerImages: [],
-				swiperHeight: initH + 'px',
+				swiperHeight: '0px',
 				showUpdatePopup: false,
 				updateVersion: ''
 			};
@@ -216,15 +213,44 @@
 					const picResponse = await uniGet(picBase + "/api/v2/pic_ad");
 					if (picResponse.data && Array.isArray(picResponse.data)) {
 						this.bannerImages = picResponse.data;
+						// 预加载所有图片，取最大高宽比设置 swiper 高度
+						this.preloadBannerSizes(picResponse.data);
 					}
 				} catch (error) {
 					console.error('Fetch error:', error);
 				}
 			},
+			preloadBannerSizes(images) {
+				let maxRatio = 0;
+				let loaded = 0;
+				images.forEach(item => {
+					if (!item.img) {
+						loaded++;
+						return;
+					}
+					uni.getImageInfo({
+						src: item.img,
+						success: (res) => {
+							const ratio = res.height / res.width;
+							if (ratio > maxRatio) maxRatio = ratio;
+						},
+						complete: () => {
+							loaded++;
+							if (loaded === images.length && maxRatio > 0) {
+								const screenWidth = uni.getSystemInfoSync().windowWidth;
+								this.swiperHeight = `${(screenWidth * maxRatio)}px`;
+							}
+						}
+					});
+				});
+			},
 			onImageLoad(e) {
-				const { width, height } = e.detail;
-				const screenWidth = uni.getSystemInfoSync().windowWidth;
-				this.swiperHeight = `${(screenWidth * height) / width}px`;
+				// 兜底：预加载完成后 @load 不再覆盖已设置的高度
+				if (this.swiperHeight === '0px') {
+					const { width, height } = e.detail;
+					const screenWidth = uni.getSystemInfoSync().windowWidth;
+					this.swiperHeight = `${(screenWidth * height) / width}px`;
+				}
 			},
 			openBannerLink(jumpUrl) {
 				if (jumpUrl) {

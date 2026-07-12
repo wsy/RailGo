@@ -1,0 +1,20 @@
+{
+  "string": [
+    {
+      "name": "module_desc",
+      "value": "module description"
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "description"
+    },
+    {
+      "name": "EntryAbility_label",
+      "value": "$string:app_name"
+    },
+	 {
+	  "name": "location_reason",
+	  "value": "用于提供GPS测速服务"
+	}
+  ]
+}

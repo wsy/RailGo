@@ -51,6 +51,18 @@
 				nowIcon: uni.getStorageSync("nowIcon") || 'crh',
 				updateLogs: [
 					{
+						version: "v2.0.2 (20002)",
+						date: "2026-07-06",
+						items: [
+							"Feature: 列车运行路径与实时位置模拟",
+							"Feature: 列车图鉴",
+							"Feature: 服务源页面支持一键自动选择接口",
+							"Fixed: About页面显示错误",
+							"Fixed: 首页Banner图显示不完整",
+							"Fixed: 切换新图标后About页面图标不显示"
+						]
+					},
+					{
 						version: "v2.0.1 (20001)",
 						date: "2026-07-03",
 						items: [

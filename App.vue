@@ -1,7 +1,7 @@
 <script>
 	const nauth = false;
-	const version = "2.0.1 Build 20001"
-	const version_number = 25
+	const version = "2.0.2 Build 20002"
+	const version_number = 26
 	import {uniGet} from "./scripts/req";
 	// #ifndef H5
 	// #ifndef APP-HARMONY

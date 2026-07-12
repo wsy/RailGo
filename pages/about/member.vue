@@ -119,7 +119,8 @@
 				zz: [],
 				dataSources: [
 					{ source: 'RailGo.Parser', website: 'railgo.dev', function: '车次、车站、正晚点、动车组担当、大屏' },
-					{ source: 'OpenCRHTracker', website: 'crh.lihugang.top', function: '担当、配属' }
+					{ source: 'OpenCRHTracker', website: 'crh.lihugang.top', function: '担当、配属' },
+					{ source: 'CT Photos', website: 'train.idcmoss.cn', function: '列车图鉴' }
 				]
 			};
 		},
